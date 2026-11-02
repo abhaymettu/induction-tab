@@ -54,3 +54,7 @@ The form asks for the title, the authors and the abstract as text. Copy the abst
 Zenodo needs no endorsement. Anyone may register as a user and deposit content they have the rights to, in all fields of research, and a deposit can have a DOI, which Zenodo lets you reserve to print in the files before publishing. It needs its own account, and none was created here. There is a test environment at `https://sandbox.zenodo.org`.
 
 The author still chooses the license and whether to publish, and the reporting question above still deserves an answer in the paper. Zenodo does not put a paper in front of arXiv's readers, so it gives a citable record and less reach.
+
+Description for a deposit, kept short because the PDF carries the numbers:
+
+> A small transformer trains through the induction transition in a browser tab, on the reader's GPU, in hand-written WGSL, and reaches the same event step as PyTorch on 64 of 64 seeds. A seeds study on small models finds the repeat rule to be the largest single-factor contrast in steps, and finds that tying weights delays the event at depths 2 to 4 at two learning rates. It claims no mechanism, does not separate effective step size, and reports one preregistered prediction that failed on one arm. Code, logs and the command behind every number are in the repository.
