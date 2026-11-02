@@ -7,6 +7,9 @@
   },
   "scripts": {
     "parity": "node tools/parity.mjs",
-    "speedrun": "node tools/speedrun.mjs"
+    "speedrun": "node tools/speedrun.mjs",
+    "check": "node tools/check.mjs",
+    "breakdown": "node tools/breakdown.mjs",
+    "verify-record": "node tools/verify-record.mjs"
   }
 }
