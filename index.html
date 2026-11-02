@@ -1,0 +1,181 @@
+<!doctype html>
+<html lang="en" data-phase="boot">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>induction-tab</title>
+<meta name="description" content="Press start and a transformer that has never seen text teaches itself to copy, live on your GPU, in seconds. Then type into it.">
+<meta name="color-scheme" content="dark light">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' fill='%23101218'/%3E%3Cpath d='M2 2h1v1H2zM4 4h1v1H4zM6 6h1v1H6zM8 8h1v1H8zM10 10h1v1h-1zM12 12h1v1h-1zM2 8h1v1H2zM4 10h1v1H4zM6 12h1v1H6z' fill='%23f0dc82'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:ital,wght@0,300;0,400;0,500;1,400&display=swap">
+<link rel="stylesheet" href="src/app/style.css">
+<script type="module" src="src/app/main.js"></script>
+</head>
+<body>
+
+<main class="live" id="live">
+  <header class="top">
+    <a class="name" href="https://github.com/abhaymettu/induction-tab">induction-tab</a>
+    <div class="controls">
+      <button type="button" class="quiet" id="pause">Pause</button>
+      <button type="button" class="quiet" id="reseed">New seed</button>
+    </div>
+    <p class="gpu" id="gpu">Looking for your GPU</p>
+  </header>
+
+  <section class="cover" id="cover">
+    <h1 id="lede">This network has never seen text, only random characters, and in a few seconds, on your own GPU, it will work out that things repeat.</h1>
+    <button type="button" class="start" id="start">Start</button>
+  </section>
+
+  <div class="say">
+    <p class="line" id="say" aria-live="polite"></p>
+    <p class="sub" id="sub"></p>
+  </div>
+
+  <section class="band" id="band">
+    <p class="caption" id="caption"></p>
+    <div class="scroller" id="scroller"><div class="stream" id="stream" aria-hidden="true"></div></div>
+    <label class="prompt" id="promptRow">
+      <span class="visually-hidden">Type text for the model to continue</span>
+      <span class="mirror" aria-hidden="true"><span class="typed" id="typed"></span><span class="ghost" id="ghost"></span></span>
+      <textarea id="box" rows="1" maxlength="128" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off" enterkeyhint="done"></textarea>
+    </label>
+    <div class="steerline">
+      <div class="next" id="next" aria-label="Most likely next characters"></div>
+      <div class="chipline">
+        <div class="chips" id="chips"></div>
+        <p class="hint" id="hint"></p>
+      </div>
+    </div>
+  </section>
+
+  <div class="below">
+    <div class="attention">
+      <div class="maps" id="maps"><canvas id="canvas" aria-label="Attention maps for two layers of four heads each"></canvas></div>
+      <div class="mapfoot">
+        <p class="explain" id="explain" aria-live="polite"></p>
+        <div class="silence" id="silence">
+          <p>Click a head to silence it. Silence all of layer 0 or all of layer 1 and copying dies.</p>
+          <div class="silence-buttons">
+            <button type="button" class="quiet" data-layer="0">Layer 0</button>
+            <button type="button" class="quiet" data-layer="1">Layer 1</button>
+            <button type="button" class="quiet" id="restore">Restore all</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="clockcurve">
+      <div class="clock">
+        <output id="clock"><span id="clockWhole">0</span><span class="point">.</span><span id="clockTenth">0</span></output>
+        <span class="unit" id="clockUnit">seconds</span>
+      </div>
+      <figure class="curve" id="curve"></figure>
+    </div>
+  </div>
+</main>
+
+<section class="after" id="after">
+  <div class="after-grid">
+    <div>
+      <h2 id="resultHead">Run it again.</h2>
+      <p id="resultBody">Each seed starts from different weights. The event moves, the shape of the transition does not.</p>
+    </div>
+    <div class="after-actions">
+      <button type="button" class="solid" id="again">Run again with a new seed</button>
+      <button type="button" class="solid outline" id="benchBtn">Run the benchmark</button>
+      <p class="small">The benchmark trains seeds 1 to 5 back to back with the page held still, then gives you a log you can submit.</p>
+    </div>
+  </div>
+  <div class="bench-out" id="benchOut" hidden>
+    <p class="bench-median" id="benchMedian"></p>
+    <div class="bench-actions">
+      <button type="button" class="solid outline" id="copyLog">Copy log</button>
+      <a class="solid outline" id="issueLink" target="_blank" rel="noopener">Open a prefilled GitHub issue</a>
+    </div>
+    <pre class="log" id="benchLog" tabindex="0"></pre>
+  </div>
+</section>
+
+<article class="notes">
+  <section>
+    <h2>What you just watched</h2>
+    <div>
+      <p>The lower row is the upper row again. Nothing else in that sequence can be predicted, because every character was drawn at random. So there is exactly one thing to learn, and for the first few hundred steps the model has not learned it.</p>
+      <p>Then it does, quickly. The light in the lower row is the model becoming sure of characters it has seen once, in a sequence it was never trained on. It saw only sequences like this one, random characters repeating at random intervals. It has no idea what English is. Type a repeating pattern into the third row and it continues yours too.</p>
+    </div>
+  </section>
+
+  <section>
+    <h2>What an induction head is</h2>
+    <div>
+      <p>Say the model has just read an <code>x</code> in the second pass.</p>
+<pre class="figure" aria-label="Worked example of an induction head reading an earlier copy">first pass   K 7 x Q m
+second pass  K 7 x ?
+                 |
+                 this x was seen before, and a Q came right after it. Say Q.</pre>
+      <p>That is the whole trick: find where this character came before, read what followed, say that. It takes two heads, one stacked on the other. A head in layer 0 reads the previous character, so every position also carries what came just before it. A head in layer 1 then asks, at each position, where was the previous character the same as mine? It attends there and copies what it finds.</p>
+      <p>You can see both in the maps. Each row of a map is a position reading, each column a position being read, so the empty upper right is the future, which no head may read. The previous-character head draws a line just under the main diagonal. The induction head draws a parallel line 63 positions below it, in the lower half, because the earlier copy of a character is 64 back and the thing to read is one after that.</p>
+      <p>Layer 0 heads reach a previous-character score around 0.5. Layer 1 heads reach a prefix-matching score of 0.6 to 0.7. This is the circuit Olsson et al. described in 2022. With one layer there is nothing beneath the head to say what came before each position, and an earlier, smaller configuration with one layer showed no event in 7000 steps.</p>
+      <p>The circuit is also why it stumbles. It matches on the previous character only, with no memory of the characters before that. After 1800 steps, <code>the quick brown fox. the quick br</code> gave <code>ox. brox. quick</code>. The <code>r</code> in <code>br</code> has a clean match, but long prompts with repeated letters give the head several places to land, and it lands on them. <code>abcabcabcabcab</code> gave <code>cabcabc</code>, <code>0123456789 0123456</code> gave <code>789 0123456789 0</code>, and <code>qwertyuiop[] qwertyu</code> gave <code>iop[] qwertyuiop</code>.</p>
+    </div>
+  </section>
+
+  <section>
+    <h2>Why this is a phase change</h2>
+    <div>
+      <p>On the first pass through a random sequence the best possible loss is chance, ln 96 = 4.56 nats, however long you train. So the difference between the first pass and the second measures copying alone. That difference is the copy advantage. It stays near zero while the model is learning nothing that helps, and then it moves all at once: 0.24, 0.36, 1.72, 2.33 across four evals, 25 steps apart, in one run.</p>
+      <p>The instruments come from Howe, arXiv 2609.19000. The event is copy advantage at or above 2 nats on two consecutive evals, reported at the second. The precursor is the first time a first-layer head reaches a previous-character score of 0.10. The prefix-matching score is the induction head's own signature.</p>
+    </div>
+  </section>
+
+  <section>
+    <h2>What correct means here</h2>
+    <div>
+      <p>The trainer is raw WGSL. The forward pass, the backward pass and AdamW are written by hand, with no ML library underneath. <code>npm run parity</code> checks the gradient of every parameter tensor against PyTorch autograd, and they agree to about 1e-6 relative L2. So what ran on your GPU is the same mathematics, not an approximation of it.</p>
+      <p>The configuration is 96 printable ASCII characters, 128 characters of context, width 128, 4 heads, 2 layers, batch 16. It trains only on uniform random characters made periodic.</p>
+    </div>
+  </section>
+
+  <section>
+    <h2>What did not work</h2>
+    <div>
+      <p>The synthetic bigram language from Howe's paper showed no signal in a tiny model, 8000 steps at width 64, context 64, batch 16. That is why this tab trains on random characters repeating with a period between 4 and 64, which puts all the pressure on copying.</p>
+      <p>A single layer does not get there. And long prompts with repeated letters still confuse it, as above, because that is what this circuit computes.</p>
+    </div>
+  </section>
+
+  <section>
+    <h2>Prior work</h2>
+    <div>
+      <p>This stands on other people's work. <a href="https://sequence.toys">Sequence Toy</a> and <a href="https://github.com/vinhowe/piston">Piston</a> by Vin Howe train sequence models in the browser on WebGPU. <a href="https://github.com/jbingen/tabgpt">TabGPT</a> and <a href="https://github.com/toprakdeviren/webgpu-llm">webgpu-llm</a> write their training kernels by hand in WGSL. <a href="https://arxiv.org/abs/2601.21631">Little Language Machine</a> trains a small transformer client-side. The circuit is from Olsson et al. 2022, <a href="https://transformer-circuits.pub/2022/in-context-learning-and-induction-heads/index.html">In-context Learning and Induction Heads</a>. The instruments and the transition are from Howe 2026, <a href="https://arxiv.org/abs/2609.19000">arXiv 2609.19000</a>.</p>
+    </div>
+  </section>
+
+  <section id="study" hidden>
+    <h2>Across seeds</h2>
+    <div>
+      <p id="studyLead">How long it takes to reach the event, by configuration. A curve is the share of seeds still without the event at each step.</p>
+      <figure class="study-fig" id="studyFig"></figure>
+      <div class="table-wrap"><table id="studyTable"></table></div>
+    </div>
+  </section>
+
+  <section id="records">
+    <h2>Records</h2>
+    <div>
+      <p id="recordsLead">Median seconds to the event over seeds 1 to 5, one row per machine.</p>
+      <div class="table-wrap"><table id="recordsTable" hidden></table></div>
+      <p class="empty" id="recordsEmpty" hidden>No records yet. Run the benchmark above and yours can be the first row.</p>
+    </div>
+  </section>
+</article>
+
+<footer class="foot">
+  <a href="https://github.com/abhaymettu/induction-tab">github.com/abhaymettu/induction-tab</a>
+</footer>
+
+</body>
+</html>
