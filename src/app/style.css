@@ -386,7 +386,7 @@ button { font: inherit; color: inherit; touch-action: manipulation; -webkit-tap-
   text-wrap: balance;
 }
 .mapfoot { position: relative; min-height: 2.9rem; margin-top: 0.6rem; font-size: 0.8125rem; line-height: 1.45; }
-.explain { position: absolute; inset: 0 0 auto; background: var(--bg); color: var(--ink); pointer-events: none; }
+.explain { position: absolute; inset: 0 0 auto; min-height: 100%; background: var(--bg); color: var(--ink); pointer-events: none; }
 .explain:empty { display: none; }
 .silence { color: var(--ink-3); display: flex; flex-wrap: wrap; gap: 0.35rem 1rem; align-items: baseline; visibility: hidden; }
 [data-arrived] .silence { visibility: visible; }

@@ -1,5 +1,5 @@
 // Drives the page through everything a reader does and fails if anything reaches a host other than the page's own.
-// A link the reader clicks is not a request, so links are not checked. `node tools/verify-network.mjs`
+// A link the reader clicks is not a request, so links are not checked. `node tools/verify-network.mjs [url]`, local serve by default.
 import { chromium } from 'playwright';
 import path from 'node:path';
 import assert from 'node:assert/strict';
@@ -8,7 +8,7 @@ import { serve } from './serve.mjs';
 const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
 const LOCAL_SCHEMES = new Set(['data:', 'blob:']);
 
-const srv = await serve(ROOT);
+const srv = process.argv[2] ? { url: process.argv[2].replace(/\/$/, ''), close() {} } : await serve(ROOT);
 const pageHost = new URL(srv.url).host;
 const browser = await chromium.launch({ channel: 'chrome', headless: true, args: ['--enable-unsafe-webgpu'] });
 const seen = [];
