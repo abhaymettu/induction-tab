@@ -2,7 +2,7 @@
 
 Press Start and watch a transformer learn to copy on your own GPU, then type into it and silence its heads. On an M4 Pro the benchmark reaches the event in a median of 4.9 s with drawing off. With drawing on we only have readings beside another GPU job, 5.8 s at the least loaded ([details](#what-you-see)).
 
-**[abhaymettu.github.io/induction-tab](https://abhaymettu.github.io/induction-tab/)**
+**[abhaymettu.github.io/induction-tab](https://abhaymettu.github.io/induction-tab/)** to run it, [the write-up](https://abhaymettu.com/research/induction-tab/) to read about it.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/hero-dark.webp">
