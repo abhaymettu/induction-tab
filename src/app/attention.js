@@ -201,6 +201,9 @@ export function createMaps(root, { canvas: firstCanvas, explain, T, H, L, onSile
   const heads = [];
   const captions = [];
   const scores = [];
+  let pointed = null;
+  // On a phone the words sit in the flow, so changing them on blur would move the buttons under a finger.
+  const floating = (text) => { if (getComputedStyle(explain).position === 'absolute') explain.textContent = text; };
   const masks = new Array(L).fill(0);
   let renderer = null;
   for (let l = 0; l < L; l++) {
@@ -222,12 +225,12 @@ export function createMaps(root, { canvas: firstCanvas, explain, T, H, L, onSile
       root.append(b);
       row.push({ el: b, label, job: null });
       const info = () => headText(l, h);
-      // On a phone the words sit in the flow, so changing them on blur would move the buttons under a finger.
-      const floating = (text) => { if (getComputedStyle(explain).position === 'absolute') explain.textContent = text; };
-      b.addEventListener('pointerenter', (e) => { if (e.pointerType === 'mouse') floating(info()); });
-      b.addEventListener('focus', () => floating(info()));
-      b.addEventListener('pointerleave', () => floating(''));
-      b.addEventListener('blur', () => floating(''));
+      const show = () => { pointed = info; floating(info()); };
+      const hide = () => { pointed = null; floating(''); };
+      b.addEventListener('pointerenter', (e) => { if (e.pointerType === 'mouse') show(); });
+      b.addEventListener('focus', show);
+      b.addEventListener('pointerleave', hide);
+      b.addEventListener('blur', hide);
       b.addEventListener('click', () => {
         if (getEnabled()) toggle(l, 1 << h);
         explain.textContent = info();
@@ -338,6 +341,7 @@ export function createMaps(root, { canvas: firstCanvas, explain, T, H, L, onSile
         }
       }
       paint();
+      if (pointed) floating(pointed());
     },
     reset() {
       masks.fill(0);

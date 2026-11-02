@@ -58,7 +58,7 @@ const gpuLine = (info) => [vendorName(info), info.architecture].filter(Boolean).
 function explainReason(reason) {
   if (reason === 'device-lost') return 'This page lost its connection to your GPU, so training stopped. Reloading usually brings it back.';
   const why = reason === 'no-adapter' ? 'This browser has WebGPU but could not get a GPU from it' : 'This browser does not offer WebGPU';
-  return `${why}, so it cannot train the network here. A recent Chrome, Edge or Safari can.`;
+  return `${why}, so it cannot train the network here. Try a recent Chrome or Edge, or another browser with WebGPU turned on.`;
 }
 
 function say(text, sub) {

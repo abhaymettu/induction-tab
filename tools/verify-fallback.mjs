@@ -22,12 +22,15 @@ async function recordingFlow(browser, label, init) {
   const lede = await page.textContent('#lede');
   console.log(`${label}: lede ${JSON.stringify(lede)}`);
   assert.equal(await page.evaluate(() => document.documentElement.dataset.source), 'recording');
-  assert.match(lede, /recent Chrome, Edge or Safari/);
+  assert.match(lede, /Try a recent Chrome or Edge/);
   assert.match(await page.textContent('#gpu'), /^Recording from /);
   if (stills) await page.screenshot({ path: `${SHOTS}/recording-ready-1440.png` });
   await page.click('#start');
+  await page.locator('#maps button').first().hover({ force: true });
   await page.waitForFunction(() => 'arrived' in document.documentElement.dataset, null, { timeout: 60000 });
   console.log(`${label}: ${await page.textContent('#say')}`);
+  assert.doesNotMatch(await page.textContent('#explain'), /No readings yet/, 'a head under the pointer keeps up with the readings');
+  await page.mouse.move(5, 5);
   assert.match(await page.textContent('#say'), /recorded on an Apple/);
   await page.fill('#box', 'abcabcabcabcab');
   await page.waitForFunction(() => document.querySelectorAll('#ghost .g').length >= 24, null, { timeout: 30000 });
