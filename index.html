@@ -133,7 +133,7 @@
     <h2>Why this is a phase change</h2>
     <div>
       <p>On the first pass through a random sequence the best possible loss is chance, ln 96 = 4.56 nats, however long you train. So the difference between the first pass and the second measures copying alone. That difference is the copy advantage. In the saved run it creeps up to 0.33 by step 350, reaches 1.73 by step 425 and stays above 2 from step 475. The remaining 2500 steps take it to 4.59.</p>
-      <p>The instruments come from Howe, arXiv 2609.19000. The event is copy advantage at or above 2 nats on two consecutive evals, reported at the second. The precursor is the first time a first-layer head reaches a previous-character score of 0.10. The prefix-matching score is the induction head's own signature.</p>
+      <p>The instruments come from Gunner Howe, arXiv 2609.19000. The event is copy advantage at or above 2 nats on two consecutive evals, reported at the second. The precursor is the first time a first-layer head reaches a previous-character score of 0.10. The prefix-matching score is the induction head's own signature.</p>
     </div>
   </section>
 
@@ -149,7 +149,7 @@
   <section>
     <h2>What did not work</h2>
     <div>
-      <p>Howe's curriculum is too slow for a tab at this size. On a model of width 64 and context 64 it took a median of 7500 steps, against 575 for random characters repeating at random periods, which puts all the pressure on copying. The numbers are under Across seeds below.</p>
+      <p>Gunner Howe's curriculum is too slow for a tab at this size. On a model of width 64 and context 64 it took a median of 7500 steps, against 575 for random characters repeating at random periods, which puts all the pressure on copying. The numbers are under Across seeds below.</p>
       <p>Two negative controls showed no event in 6000 steps, on 8 seeds each. One layer has no head beneath it to read the previous character, and its copy advantage stayed at or below 1.14. A model that never sees a repeat has nothing to copy, and stayed at or below 0.003.</p>
     </div>
   </section>
@@ -158,7 +158,7 @@
     <h2>Prior work</h2>
     <div>
       <p>Other browser demos train induction heads live, including <a href="https://theorempath.com/demo/induction-heads-lab">TheoremPath's lab</a> and <a href="https://github.com/pariharshyamu/gama">gama's Induction</a>, both on the CPU or without a stated GPU backend. This one runs on the viewer's GPU in hand-written WGSL, keeps MLPs and LayerNorm, and streams previous-token and induction scores with head ablation on one page. We did not find that combination within our search coverage.</p>
-      <p>This stands on other people's work. <a href="https://sequence.toys">Sequence Toy</a> and <a href="https://github.com/vinhowe/piston">Piston</a> by Vin Howe train sequence models in the browser on WebGPU. <a href="https://github.com/jbingen/tabgpt">TabGPT</a> and <a href="https://github.com/toprakdeviren/webgpu-llm">webgpu-llm</a> write their training kernels by hand in WGSL. <a href="https://arxiv.org/abs/2601.21631">Little Language Machine</a> trains a small transformer client-side. The circuit is from Olsson et al. 2022, <a href="https://transformer-circuits.pub/2022/in-context-learning-and-induction-heads/index.html">In-context Learning and Induction Heads</a>. The instruments and the transition are from Howe 2026, <a href="https://arxiv.org/abs/2609.19000">arXiv 2609.19000</a>.</p>
+      <p>This stands on other people's work. <a href="https://sequence.toys">Sequence Toy</a> and <a href="https://github.com/vinhowe/piston">Piston</a> by Vin Howe train sequence models in the browser on WebGPU. <a href="https://github.com/jbingen/tabgpt">TabGPT</a> and <a href="https://github.com/toprakdeviren/webgpu-llm">webgpu-llm</a> write their training kernels by hand in WGSL. <a href="https://arxiv.org/abs/2601.21631">Little Language Machine</a> trains a small transformer client-side. The circuit is from Olsson et al. 2022, <a href="https://transformer-circuits.pub/2022/in-context-learning-and-induction-heads/index.html">In-context Learning and Induction Heads</a>. The instruments and the transition are from Gunner Howe 2026, <a href="https://arxiv.org/abs/2609.19000">arXiv 2609.19000</a>.</p>
     </div>
   </section>
 
@@ -166,7 +166,7 @@
     <h2>Across seeds</h2>
     <div>
       <p>This is a smaller model than the tab's, width 64 and context 64, so a rented CPU machine could run many seeds. Every configuration here ran 64 seeds unless it says otherwise, and the full tables are in the repo.</p>
-      <p>Most of the speed is the curriculum. On random characters made periodic this model reaches the event at a median of step 575. Howe's language made periodic takes 1025. Howe's language with Howe's clone rule takes 7500, and 4 of 16 seeds had not got there by step 8000. Random characters under the clone rule never got there in any of 16 seeds.</p>
+      <p>Most of the speed is the curriculum. On random characters made periodic this model reaches the event at a median of step 575. Gunner Howe's language made periodic takes 1025. That language with its original clone rule takes 7500, and 4 of 16 seeds had not got there by step 8000. Random characters under the clone rule never got there in any of 16 seeds.</p>
       <figure class="study-fig" id="studyCurriculum"></figure>
       <p>Shared weights delay the event, and the delay grows with depth. A block here is one set of weights, so 8 layers with 1 block is the same block applied 8 times. At equal depth, fewer blocks means a later event, up to depth 8, where one block had not fired in 32 seeds by step 4000. Extra depth with its own weights costs little in steps. A filled circle is a model whose every layer has its own weights.</p>
       <figure class="study-fig rows" id="studyForest"></figure>
