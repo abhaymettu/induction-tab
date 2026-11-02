@@ -83,7 +83,7 @@ export function createCurve(host, { threshold }) {
     hline(axis, Y(0));
     hline(chance, Y(CHANCE));
     hline(thresh, Y(threshold));
-    set(chanceText, { x: w - m.r, y: Y(CHANCE) - 5, 'text-anchor': 'end' });
+    set(chanceText, { x: w - m.r - 10, y: Y(CHANCE) - 5, 'text-anchor': 'end' });
     set(threshText, { x: w / 2, y: Y(threshold) - 5, 'text-anchor': 'middle' });
     set(stepStart, { x: m.l, y: h - 5 });
     set(stepEnd, { x: w - m.r, y: h - 5, 'text-anchor': 'end' });
@@ -170,7 +170,9 @@ export function createCurve(host, { threshold }) {
     }
     const bottom = Y(0) - 4;
     let b = Math.min(bottom, lossLow + 16);
-    let a = lastP.adv > lastP.loss ? Math.min(bottom, advLow + 17) : advHigh - 8;
+    // While it climbs steeply there is no tail to clear, only the line coming up from the lower left.
+    const steep = advLow - advHigh > (h - m.t - m.b) * 0.2;
+    let a = steep ? Y(lastP.adv) - 8 : lastP.adv > lastP.loss ? Math.min(bottom, advLow + 17) : advHigh - 8;
     if (Math.abs(a - b) < 16) {
       if (a <= b) a = b - 16; else a = b + 16;
     }
@@ -198,7 +200,7 @@ export function createCurve(host, { threshold }) {
       return { x0, x1: x0 + width, y0: y - 12, y1: y + LINE + 4 };
     };
     const hit = (r) => {
-      if (r.x0 < m.l || r.x1 > w - m.r) return true;
+      if (r.x0 < m.l - 14 || r.x1 > w - m.r) return true;
       if (ends.some((e) => overlaps(e, r))) return true;
       const other = mark === marks.prev ? marks.event : marks.prev;
       if (other.place && other.step !== null && other.step <= head) {

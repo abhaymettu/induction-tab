@@ -76,7 +76,7 @@ function narrate(f) {
   const stepText = `Step ${f.step} of ${TRAIN_TO}.`;
   const adv = `Copy advantage ${f.copyAdv.toFixed(2)} nats.`;
   if (arrived) {
-    say(resultSentence(result.seconds), `${stepText} ${adv} Type below, or click a head to silence it.`);
+    say(resultSentence(result.seconds), `${stepText} ${adv}`);
     return;
   }
   const sub = `${stepText} Loss ${f.trainLoss.toFixed(2)}. ${adv}`;
@@ -181,7 +181,7 @@ function onEvent({ seconds }) {
   lastChipStep = lastFrame.step;
   paintClock();
   if (lastFrame) narrate(lastFrame);
-  steer.setEnabled(true, 'Type something that repeats. It will carry on.');
+  steer.setEnabled(true, placeholders().after);
   $('hint').textContent = 'Measuring which prompts it can continue.';
   setTimeout(() => steer.measureChips(), 600);
   $('resultHead').textContent = resultSentence(seconds);
@@ -198,8 +198,8 @@ function onFinished({ gotEvent, steps }) {
     say(`No event in ${steps} steps with this seed.`, 'That can happen. Try a new seed.');
     return;
   }
-  const silent = maps.masks.some(Boolean);
-  $('sub').textContent = `${source.kind === 'recording' ? 'End of the recording' : `Stopped at step ${steps} to save your battery`}. ${silent ? 'Heads silenced. ' : ''}Copy advantage ${lastFrame.copyAdv.toFixed(2)} nats. Type below, or click a head to silence it.`;
+  const stopped = source.kind === 'recording' ? 'End of the recording' : `Stopped at step ${steps} to save your battery`;
+  $('sub').textContent = `${stopped}. ${lastFrame.silenced ? 'Heads silenced. ' : ''}Copy advantage ${lastFrame.copyAdv.toFixed(2)} nats.`;
   steer.measureChips();
   kick();
 }
@@ -241,15 +241,17 @@ function resetView() {
     b.textContent = `Silence layer ${b.dataset.layer}`;
   });
   $('caption').textContent = captionText();
-  steer.setEnabled(source.canPromptEarly, source.canPromptEarly ? 'Type here if you like. For now it can only answer with noise.' : 'The text box opens at the event.');
+  steer.setEnabled(source.canPromptEarly, source.canPromptEarly ? placeholders().before : placeholders().closed);
 }
 
-const captionText = () => {
-  const narrow = matchMedia('(max-width: 760px)').matches;
-  return narrow
-    ? 'A random sequence, then its exact repeat. Light and bar show how sure the model is. Drag to see all 64 columns.'
-    : 'A random sequence, then its exact repeat, column for column. Brightness and the bar under each character show how sure the model is of it.';
-};
+const isNarrow = () => matchMedia('(max-width: 760px)').matches;
+const captionText = () => (isNarrow()
+  ? 'A random sequence and its exact repeat. Light and bar show how sure the model is.'
+  : 'A random sequence, then its exact repeat, column for column. Brightness and the bar under each character show how sure the model is of it.');
+// The third row is 24 columns wide on a phone, and a placeholder cannot wrap between words there.
+const placeholders = () => (isNarrow()
+  ? { before: 'Type. Noise for now.', after: 'Type a repeating pattern', closed: 'Opens at the event.' }
+  : { before: 'Type here if you like. For now it can only answer with noise.', after: 'Type something that repeats. It will carry on.', closed: 'The text box opens at the event.' });
 
 function begin() {
   if (!source) { queuedStart = true; $('start').textContent = 'Starting'; return; }
@@ -275,7 +277,7 @@ async function restart() {
 function measureCover() {
   const band = $('band');
   const coverBottom = $('cover').offsetTop + $('cover').offsetHeight;
-  const rows = $('scroller').offsetTop + $('scroller').offsetHeight - band.offsetTop;
+  const rows = $('scroller').getBoundingClientRect().bottom - band.getBoundingClientRect().top;
   const foot = innerHeight - rows - 64;
   band.style.setProperty('--shift', `${Math.max(0, Math.max(coverBottom + 40, foot) - band.offsetTop)}px`);
 }
@@ -308,7 +310,7 @@ async function useRecording(reason) {
   stream.clear();
   setPhase('ready');
   measureCover();
-  steer.setEnabled(false, 'The text box opens at the event.');
+  steer.setEnabled(false, placeholders().closed);
   $('again').textContent = 'Play the recording again';
   $('resultHead').textContent = 'This is a recording.';
   $('resultBody').textContent = `It came from an ${source.machine}. A browser with WebGPU trains it live on your own machine.`;
@@ -356,8 +358,8 @@ async function runBench() {
   maps.update(r.scores);
   lastFrame = { copyAdv: r.copyAdv };
   source.freeze(result.seconds);
-  say(headline, 'The model here is seed 5, just past the event. Type below, or click a head to silence it.');
-  steer.setEnabled(true, 'Type something that repeats. It will carry on.');
+  say(headline, 'The model here is seed 5, just past the event.');
+  steer.setEnabled(true, placeholders().after);
   steer.measureChips();
   kick();
 }

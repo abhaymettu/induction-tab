@@ -109,17 +109,23 @@
   </section>
 
   <section>
-    <h2>What an induction head is</h2>
+    <div class="lead">
+      <h2>What an induction head is</h2>
+      <figure class="worked" aria-label="Worked example: the model has read an x in the second pass, an earlier x was followed by a Q, so it says Q">
+        <figcaption>Say the model has just read an <code>x</code> in the second pass.</figcaption>
+        <div class="worked-rows" aria-hidden="true">
+          <span>K7<i>x</i><b>Q</b>m</span>
+          <span>K7<i>x</i><b class="said">Q</b></span>
+        </div>
+        <figcaption>This <code>x</code> was seen before, and a <code>Q</code> came right after it. So it says <code>Q</code>.</figcaption>
+      </figure>
+    </div>
     <div>
-      <p>Say the model has just read an <code>x</code> in the second pass.</p>
-<pre class="figure" aria-label="Worked example of an induction head reading an earlier copy">first pass   K 7 x Q m
-second pass  K 7 x ?
-                 |
-                 this x was seen before, and a Q came right after it. Say Q.</pre>
       <p>That is the whole trick: find where this character came before, read what followed, say that. It takes two heads, one stacked on the other. A head in layer 0 reads the previous character, so every position also carries what came just before it. A head in layer 1 then asks, at each position, where was the previous character the same as mine? It attends there and copies what it finds.</p>
-      <p>You can see both in the maps. Each row of a map is a position reading, each column a position being read, so the empty upper right is the future, which no head may read. The previous-character head draws a line just under the main diagonal. The induction head draws a parallel line 63 positions below it, in the lower half, because the earlier copy of a character is 64 back and the thing to read is one after that.</p>
+      <p>You can see both in the maps. Each row of a map is a position reading and each column a position being read, so the empty upper right is the future, which no head may read. The previous-character head draws a line just under the main diagonal. The induction head draws a parallel line 63 positions below it, in the lower half, because the earlier copy of a character is 64 back and the thing to read is one after that.</p>
       <p>Layer 0 heads reach a previous-character score around 0.5. Layer 1 heads reach a prefix-matching score of 0.6 to 0.7. This is the circuit Olsson et al. described in 2022. With one layer there is nothing beneath the head to say what came before each position, and an earlier, smaller configuration with one layer showed no event in 7000 steps.</p>
-      <p>The circuit is also why it stumbles. It matches on the previous character only, with no memory of the characters before that. After 1800 steps, <code>the quick brown fox. the quick br</code> gave <code>ox. brox. quick</code>. The <code>r</code> in <code>br</code> has a clean match, but long prompts with repeated letters give the head several places to land, and it lands on them. <code>abcabcabcabcab</code> gave <code>cabcabc</code>, <code>0123456789 0123456</code> gave <code>789 0123456789 0</code>, and <code>qwertyuiop[] qwertyu</code> gave <code>iop[] qwertyuiop</code>.</p>
+      <p>The circuit is also why it stumbles, because it matches on the previous character only. Look at the last column of the lower row, which stays dark. The <code>4</code> before it appears three times in the first pass, followed by <code>Z</code>, <code>U</code> and <code>b</code>, and on seed 1 at step 3000 the model says <code>Z</code> at nearly 100%. The first column stays dark for a simpler reason: the <code>b</code> before it has never been seen.</p>
+      <p>Prompts go the same way. Where every character has one possible successor it is clean, so <code>abcabcabcabcab</code> gave <code>cabcabc</code> and <code>qwertyuiop[] qwertyu</code> gave <code>iop[] qwertyuiop</code> after 1800 steps. But <code>the quick brown fox. the quick br</code> gave <code>ox. brox. quick</code>. Read that one character at a time and every step is a real pair from the prompt: <code>o</code> was followed by <code>x</code>, and a space was followed by <code>b</code>. It has no memory of where it was.</p>
     </div>
   </section>
 
@@ -143,7 +149,7 @@ second pass  K 7 x ?
     <h2>What did not work</h2>
     <div>
       <p>The synthetic bigram language from Howe's paper showed no signal in a tiny model, 8000 steps at width 64, context 64, batch 16. That is why this tab trains on random characters repeating with a period between 4 and 64, which puts all the pressure on copying.</p>
-      <p>A single layer does not get there. And long prompts with repeated letters still confuse it, as above, because that is what this circuit computes.</p>
+      <p>A single layer does not get there. Long prompts with repeated letters still confuse it, as above, because that is what this circuit computes.</p>
     </div>
   </section>
 

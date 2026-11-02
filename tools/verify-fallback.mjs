@@ -55,16 +55,27 @@ try {
 
   const context = await noAdapter.newContext({ viewport: { width: 1440, height: 900 }, colorScheme: 'dark' });
   const page = await context.newPage();
+  const errors = [];
+  page.on('pageerror', (e) => errors.push(e.message));
   await page.addInitScript(() => {
-    const original = GPUAdapter.prototype.requestDevice;
-    GPUAdapter.prototype.requestDevice = async function (d) { const dev = await original.call(this, d); window.__device = dev; return dev; };
+    let lose;
+    const lost = new Promise((r) => { lose = r; });
+    window.loseDevice = () => lose({ reason: 'unknown', message: 'simulated' });
+    Object.defineProperty(GPUDevice.prototype, 'lost', { get: () => lost });
   });
   await page.goto(`${srv.url}/`);
   await page.waitForFunction(() => document.documentElement.dataset.phase === 'ready', null, { timeout: 30000 });
   await page.click('#start');
   await page.waitForFunction(() => /Step [1-9]/.test(document.getElementById('sub').textContent), null, { timeout: 20000 });
-  await page.evaluate(() => window.__device.destroy());
-  console.log('device destroyed by the page counts as deliberate; checking a real loss path by forced reason instead');
+  await page.evaluate(() => window.loseDevice());
+  await page.waitForFunction(() => document.documentElement.dataset.source === 'recording' && document.documentElement.dataset.phase === 'ready', null, { timeout: 15000 });
+  const lede = await page.textContent('#lede');
+  console.log(`device lost mid-run: ${JSON.stringify(lede)}`);
+  assert.match(lede, /lost its connection/);
+  await page.click('#start');
+  await page.waitForFunction(() => 'arrived' in document.documentElement.dataset, null, { timeout: 60000 });
+  console.log(`device lost mid-run: ${await page.textContent('#say')}`);
+  assert.deepEqual(errors, [], 'no page errors after losing the device');
   await context.close();
   await noAdapter.close();
   console.log('PASS');
