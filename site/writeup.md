@@ -38,14 +38,14 @@ Training on random repeats isn't new. [shaikabdul185-arch](https://github.com/sh
 
 On random-repeat data, at equal depth, tying weights delayed the event. I write arms as (layers, blocks), where a block is one set of weights, so (8,1) is the same block applied 8 times. The delay holds at both learning rates I tested at depths 2 to 4, with 64 seeds per arm.
 
-| Time ratio, one block against untied | Depth 2 | Depth 3 | Depth 4 |
+| One block against untied | Depth 2 | Depth 3 | Depth 4 |
 |---|---|---|---|
-| lr 3e-3, censored log-normal fit | 1.55 | 2.31 | 3.27 |
-| lr 3e-3, ratio of Kaplan-Meier medians | 1.52 | 2.17 | 2.81 |
-| lr 1e-3, censored log-normal fit | 1.55 | 2.09 | 4.07 |
-| lr 1e-3, ratio of Kaplan-Meier medians | 1.55 | 2.06 | 4.04 |
+| lr 3e-3, fit | 1.55 | 2.31 | 3.27 |
+| lr 3e-3, KM | 1.52 | 2.17 | 2.81 |
+| lr 1e-3, fit | 1.55 | 2.09 | 4.07 |
+| lr 1e-3, KM | 1.55 | 2.06 | 4.04 |
 
-The plan preregistered the fit, and the two estimates disagree where a few runs stall. Across the 55 ratio intervals I read, at a Bonferroni level of 0.05/55 per interval, the lowest bound on tying is 1.26, so it stays above 1.
+Each cell is a time ratio. The fit is a censored log-normal, which the plan preregistered, and KM is the ratio of Kaplan-Meier medians. The two disagree where a few runs stall. Across the 55 ratio intervals I read, at a Bonferroni level of 0.05/55 per interval, the lowest bound on tying is 1.26, so it stays above 1.
 
 I did not find this delay reported within my search coverage. The closest work finds looped models earlier than a dense model, on other tasks, and I don't claim a contradiction with Kapl et al. ([2610.31421](https://arxiv.org/abs/2610.31421)) or Sesodia et al. ([2610.24135](https://arxiv.org/abs/2610.24135)). I also did not separate effective step size from structure, so I claim the delay at these depths, learning rates and data, and no mechanism.
 
