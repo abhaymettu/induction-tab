@@ -43,6 +43,8 @@ GPU tools need Google Chrome. `npm run parity` calls `.venv/bin/python` by that 
 | `npm run heads` | venv | Trains 8 seeds with PyTorch on CPU and rewrites `results/heads-looped-2-1.json` |
 | `npm run study` | venv | Rewrites `results/study-summary.json` and `results/study-table.md` from the study runs. Rows from `deep-8-1-long` replace the (8,1) arm |
 | `.venv/bin/python tools/analyze_third.py` | venv | Rewrites `results/third-summary.json` from the third plan's runs |
+| `.venv/bin/python tools/analyze_contrasts.py` | venv | Rewrites `results/contrast-correction.json`: tying intervals at a Bonferroni level and coverage on the eval grid |
+| `node tools/watched.mjs [out.json] [rounds]` | GPU | Times the real page with drawing on, beside a tight loop on each seed, and writes `results/watched-m4pro.json` |
 | `node tools/runs.mjs list` | nothing | Lists every named run on this machine and how many seeds it still needs |
 | `node tools/runs.mjs <name> [maxMinutes]` | GPU, venv for `tab-native` | Runs one named job and appends to `results/<name>.jsonl`, skipping finished seeds |
 | `npm run compare` | venv | Rewrites `results/native-vs-browser.json` |

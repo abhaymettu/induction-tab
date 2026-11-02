@@ -156,6 +156,19 @@ def timing_numbers():
     put("nBenchSeeds", len(runs), src)
     put("nTabParams", js("breakdown-m4pro.json")["params"], "results/breakdown-m4pro.json", 435456)
 
+    watched = js("watched-m4pro.json")
+    src = "results/watched-m4pro.json"
+    put("nWatchedMedian", fmt(watched["medianClockSeconds"], 1), src)
+    put("nWatchedLeast", fmt(watched["medianLeastLoadedClockSeconds"], 1), src)
+    put("nWatchedRounds", watched["rounds"], src)
+    put("nWatchedLoad", fmt(watched["otherLoadFactor"], 1), src)
+    clocks = [r["clockSeconds"] for r in watched["runs"]]
+    put("nWatchedLow", fmt(min(clocks), 1), src)
+    put("nWatchedHigh", fmt(max(clocks), 1), src)
+    quoted = [f"{fmt(watched[k], 1)} s" for k in ("medianClockSeconds", "medianLeastLoadedClockSeconds")]
+    same("README and the page quote the watched clock", all(q in (ROOT / f).read_text() for q in quoted for f in ("README.md", "index.html")), True)
+    same("watched and benchmark reach the event at the same steps", {r["seed"]: r["tEvent"] for r in watched["runs"]}, {r["seed"]: r["tEvent"] for r in runs})
+
     text = (RESULTS / "breakdown-m4pro.txt").read_text()
     src = "results/breakdown-m4pro.txt"
     step = float(re.search(r"step ([\d.]+) ms", text).group(1))
@@ -193,6 +206,8 @@ def parity_numbers():
     put("nParityConfigs", len(metal["configs"]), src, 5)
     put("nParitySteps", metal["steps"], src, 20)
     put("nParityGrad", sci(worst_grad), src, "1.1e-6")
+    exact = f"{worst_grad:.2e}".replace("e-0", "e-")
+    same(f"README and the page quote the stored parity figure {exact}", all(exact in (ROOT / f).read_text() for f in ("README.md", "index.html")), True)
     put("nParityParam", sci(max(c["summary"]["pN"]["worstRelL2"] for c in cfgs)), src)
     put("nParityLoss", sci(max(c["lossMaxAbsErr"] for c in cfgs)), src)
     src = "results/parity-google-swiftshader.json"
@@ -281,6 +296,62 @@ def trainer_numbers():
     same("study negatives fire nowhere", sum(r["t_event"] is not None for r in study_negatives), 0)
     put("nNegStudyLayer", fmt(max(c["copyAdv"] for r in layer for c in r["curve"]), 2), src, "1.20")
     put("nNegStudyNoRep", fmt(max(c["copyAdv"] for r in norep for c in r["curve"]), 3), src, "0.067")
+
+
+def second_pass_numbers():
+    src = "every results/*.jsonl that logs both passes"
+    chance = math.log(96)
+    logged = []
+    for path in sorted(RESULTS.glob("*.jsonl")):
+        if path.stem == "fine-2-2-extra":
+            continue
+        for r in rows(path.stem):
+            at_event = next((c for c in r["curve"] if c["step"] == r["t_event"]), None)
+            if at_event and "secondPass" in at_event:
+                logged.append((path.stem, at_event))
+    above = [(name, c) for name, c in logged if c["secondPass"] > chance]
+    same("second pass above chance only on Howe's language", {name for name, _ in above}, {"crossed-rule-bigram", "crossed-range-bigram"})
+    second = [c["secondPass"] for _, c in above]
+    first = [c["firstPass"] for _, c in above]
+    prefix = [max(c["prefix"]) for _, c in above]
+    put("nLoggedEvents", len(logged), src)
+    put("nLangEvents", len(above), src, 3)
+    put("nLangSecondLow", fmt(min(second), 2), src, "4.92")
+    put("nLangSecondHigh", fmt(max(second), 2), src, "5.34")
+    put("nLangFirstLow", fmt(min(first), 2), src)
+    put("nLangFirstHigh", fmt(max(first), 2), src)
+    put("nLangPrefixLow", fmt(min(prefix), 2), src)
+    put("nLangPrefixHigh", fmt(max(prefix), 2), src)
+    put("nLangUnlogged", sum(r["t_event"] is not None for r in rows("study-curriculum")), "results/study-curriculum.jsonl", 28)
+    same("that file does not log both passes", any("secondPass" in c for r in rows("study-curriculum") for c in r["curve"]), False)
+
+
+def correction_numbers():
+    c = js("contrast-correction.json")
+    src = "results/contrast-correction.json"
+    study = js("study-summary.json")["contrasts"]
+    third = js("third-summary.json")
+    counted = sum(x.get("ci") is not None for x in study) + sum(x.get("kmCi") is not None for x in study) + sum(v.get("ci") is not None for part in ("curriculum", "depth") for v in third[part].values()) + 1
+    same("intervals read", c["intervalsReadTotal"], counted)
+    stored = {(tuple(x["a"]), tuple(x["b"]), x["lr"]): x for x in study if isinstance(x["a"], list)}
+    for t in c["tying"]:
+        k = stored[(tuple(t["a"]), tuple(t["b"]), t["lr"])]
+        same(f"correction tool's fit for {t['a']} at {t['lr']}", round(t["fit"], 3), round(k["timeRatio"], 3))
+        same(f"correction tool's median ratio for {t['a']} at {t['lr']}", round(t["km"], 3), round(k["kmRatio"], 3))
+    put("nIntervalsRead", c["intervalsReadTotal"], src, 55)
+    put("nTyingIntervals", c["tyingIntervals"], src, 20)
+    put("nAdjustedLevel", f"0.05/{c['intervalsReadTotal']}", src)
+    put("nAdjustedResamples", c["resamples"], src)
+    put("nAdjustedBound", fmt(c["lowestAdjustedBound"], 2), src)
+    same("tying stays above 1 under the correction", c["lowestAdjustedBound"] > 1, True)
+    lat = c["lattice"]
+    put("nLatticeContinuousLow", fmt(100 * lat["coversContinuousRange"][0], 1), src)
+    put("nLatticeContinuousHigh", fmt(100 * lat["coversContinuousRange"][1], 1), src)
+    put("nLatticeGridLow", fmt(100 * lat["coversGridRange"][0], 1), src)
+    put("nLatticeGridHigh", fmt(100 * lat["coversGridRange"][1], 0), src)
+    put("nLatticeReps", lat["reps"], src)
+    put("nLatticeN", lat["n"], src, 64)
+    put("nLatticeSd", fmt(lat["logSd"], 3), src)
 
 
 def howe_numbers():
@@ -452,6 +523,10 @@ def study_numbers():
     put("nEightOneMinPrefix", fmt(min(long_run["finalPrefix"]), 3), src3)
     put("nEightOneMinCopy", fmt(min(long_run["finalCopyAdv"]), 2), src3)
     put("nEightOneMaxCopy", fmt(max(long_run["finalCopyAdv"]), 2), src3)
+    last_evals = [r["curve"][-1] for r in pool["deep-8-1-long"]]
+    same("(8,1) runs stop at the event", [c["step"] for c in last_evals], [r["t_event"] for r in pool["deep-8-1-long"]])
+    put("nEightOneSecondLow", fmt(min(c["secondPass"] for c in last_evals), 2), "results/deep-8-1-long.jsonl")
+    put("nEightOneSecondHigh", fmt(max(c["secondPass"] for c in last_evals), 2), "results/deep-8-1-long.jsonl")
     put("nEightOneMinEvent", min(long_run["events"]), src3)
     put("nEightOneMaxEvent", max(long_run["events"]), src3)
     twelve = third["(12,4) against (12,12)"]
@@ -522,6 +597,7 @@ def curriculum_numbers():
     same("bigram repeat-rate arms differ only in pRep", {**bigram_rate_high[0]["cfg"], "pRep": None}, {**bigram_rate_low[0]["cfg"], "pRep": None})
     put("nRuleBiBound", fmt(low[0]["budget"] / rule_bi["b"]["medianStep"], 2), "8000 over the tiled median, results/third-summary.json")
     put("nRuleUniBound", fmt(low[0]["budget"] / rule_uni["a"]["medianStep"], 2), "8000 over the tiled median, results/third-summary.json")
+    put("nCloneWeakBound", fmt(low[0]["budget"] / range_bi["b"]["medianStep"], 2), "8000 over the clone median, results/third-summary.json")
 
     how = js("third-summary.json")["tabOnHowe"]
     put("nTabHoweN", how["n"], "results/third-summary.json", 8)
@@ -534,14 +610,24 @@ def rule_range_median(third):
 
 
 def forecast_numbers():
-    spacing = js("third-summary.json")["spacing"]
+    both = js("third-summary.json")["spacing"]
+    planned, extended, spacing = both["asPlanned"], both["extended"], both["allSeeds"]
     src = "results/third-summary.json"
-    put("nSpacingSeeds", spacing["seeds"], src, 61)
-    put("nSpacingStopped", len(spacing["stoppedBeforeTheCoarseEvent"]), src, 3)
-    put("nSpacingSameEvent", spacing["sameEventAsStudy"], src, 61)
-    put("nSpacingSameAnchor", spacing["sameAnchorAsStudy"], src, 61)
+    stopped = planned["stoppedBeforeTheCoarseEvent"]
+    put("nSpacingPlanned", planned["seeds"], src, 61)
+    put("nSpacingPlannedSame", planned["sameEventAsStudy"], src, 61)
+    same("the plan's readable seeds also match on the anchor", planned["sameAnchorAsStudy"], 61)
+    put("nSpacingStopped", len(stopped), src, 3)
+    put("nSpacingStoppedSeeds", f"{stopped[0]}, {stopped[1]} and {stopped[2]}", src, "17, 23 and 51")
+    put("nPlanStopPast", both["planEventsPast"], "research/PREREG-3.md", 75)
+    put("nExtraStopPast", extended["stopPast"], "results/fine-2-2-extra.jsonl", 400)
+    put("nSpacingSeeds", spacing["seeds"], src, 64)
+    put("nSpacingSameEvent", spacing["sameEventAsStudy"], src, 64)
+    put("nSpacingSameAnchor", spacing["sameAnchorAsStudy"], src, 64)
     put("nGapFine", fmt(spacing["gapEvery5"], 3), src, "0.748")
     put("nGapCoarse", fmt(spacing["gapEvery25"], 3), src, "0.727")
+    same("the three added seeds do not move the fine median", fmt(planned["gapEvery5"], 3), registry["nGapFine"][0])
+    same("the three added seeds do not move the coarse median", fmt(planned["gapEvery25"], 3), registry["nGapCoarse"][0])
     put("nGapDiff", fmt(spacing["pairedMedianDifference"], 3), src)
     put("nShareFine", fmt(100 * spacing["inEnvelopeEvery5"], 0), src)
     put("nShareCoarse", fmt(100 * spacing["inEnvelopeEvery25"], 0), src)
@@ -672,6 +758,8 @@ def main():
     forecast_numbers()
     heads_numbers()
     corrections_and_dates()
+    second_pass_numbers()
+    correction_numbers()
 
     width = max(len(n) for n in registry)
     for name, (value, source) in sorted(registry.items()):

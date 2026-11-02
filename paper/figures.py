@@ -195,8 +195,7 @@ def gap():
     table = [tuple(map(int, r)) for r in re.findall(r"^\| (\d+) \| (\d+) \| (\d+) \| (\d+) \| (\d+) \|$", spec, re.M)]
     howe = [r[2] / r[1] for r in table]
     config_a = rows("config-a")[0]
-    third = json.loads((RESULTS / "third-summary.json").read_text())["spacing"]
-    fine = [r["t_pv"] / r["t_event"] for r in rows("fine-2-2") if r["seed"] not in third["stoppedBeforeTheCoarseEvent"]]
+    fine = [r["t_pv"] / r["t_event"] for r in rows("fine-2-2")]
 
     def arm(shape, lr, curriculum=TILED):
         g = ARMS[(shape, lr, curriculum)]["gap"]

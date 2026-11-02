@@ -1,6 +1,6 @@
 # induction-tab
 
-Press Start and watch a transformer learn to copy on your own GPU, about 5 seconds on an M4 Pro, then type into it and silence its heads.
+Press Start and watch a transformer learn to copy on your own GPU, then type into it and silence its heads. On an M4 Pro the benchmark reaches the event in a median of 4.9 s with drawing off. With drawing on we only have readings beside another GPU job, 5.8 s at the least loaded ([details](#what-you-see)).
 
 **[abhaymettu.github.io/induction-tab](https://abhaymettu.github.io/induction-tab/)**
 
@@ -10,7 +10,7 @@ Press Start and watch a transformer learn to copy on your own GPU, about 5 secon
   <img alt="The page after training. The repeated row of random characters is lit, every layer 1 attention map shows a sharp line in its lower half, and a typed abcabc prompt continues itself." src="docs/hero-light.webp">
 </picture>
 
-<sub>Seed 1 after 3000 steps on an M4 Pro. Another job was using the GPU during this capture, so its clock reads 6.9 s. The clean benchmark for this seed is 5.2 s.</sub>
+<sub>Seed 1 after 3000 steps on an M4 Pro. Another job was using the GPU during this capture, so its clock reads 6.9 s. The benchmark for this seed, with drawing off, is 5.2 s.</sub>
 
 ## What you see
 
@@ -24,7 +24,7 @@ For the first few hundred steps the model has learned nothing. Then three things
 
 Type something that repeats and the model carries on, so `abcabcabcabcab` gives `cabcabc`. Press a head to silence it. Silence all of layer 0 or all of layer 1 and copying dies. A browser with no WebGPU plays a recording of a real run and answers prompts with the saved weights on the CPU.
 
-On an M4 Pro in Chrome, with nothing else on the GPU, seeds 1 to 5 reach the event at steps 500, 475, 600, 425, and 475. That is 5.2, 4.9, 6.2, 4.4, and 4.9 s at 10.3 ms per step, a median of 4.9 s. Matrix multiplies take 8.44 of the 10.04 ms in a replayed step. Native PyTorch is faster on the same machine and config. MPS takes 5.5 ms per step, about 1.9 times faster than this trainer, and 8 CPU threads take 13.9 ms.
+On an M4 Pro in Chrome, with nothing else on the GPU, seeds 1 to 5 reach the event at steps 500, 475, 600, 425, and 475. That is 5.2, 4.9, 6.2, 4.4, and 4.9 s at 10.3 ms per step, a median of 4.9 s, with drawing off, because the benchmark holds the page still. A run you watch also draws. We measured the real page with drawing on, seeds 1 to 5 over 3 rounds in headless Chrome, and its clock at the event has a median of 8.7 s. Another job held the GPU during those runs, and a tight loop on the same seed beside each one took 1.4 times its benchmark. That job only adds time, so each seed's fastest round is its least loaded reading, and those have a median of 5.8 s. We can't separate the cost of drawing from that job's cost, so this is a loaded reading and not an idle one (`results/watched-m4pro.json`). Matrix multiplies take 8.44 of the 10.04 ms in a replayed step. Native PyTorch is faster on the same machine and config. MPS takes 5.5 ms per step, about 1.9 times faster than this trainer, and 8 CPU threads take 13.9 ms.
 
 Copy advantage does not measure copying alone. The best possible first-pass loss is chance, ln 96 = 4.56 nats, and a model that expects repeats guesses wrong on characters it has not seen, so its first pass climbs above chance. On the tab's model at the event, over 64 seeds, the first pass is 5.23, the second pass is 3.01, the advantage is 2.23, and a median 30 percent of the advantage is the first pass rising above chance (`results/third-summary.json`, key `tab.atEvent`). That is why the saved run ends above ln 96. At step 3000 on seed 1 the advantage is 4.59, the first pass 4.73 and the second 0.14 (`results/saved-run.jsonl`). The event's definition stays Howe's.
 
@@ -32,7 +32,7 @@ Copy advantage does not measure copying alone. The best possible first-pass loss
 
 The trainer is hand-written WGSL for the forward pass, the backward pass, and AdamW. Two checks compare it to PyTorch, and the negative controls test the instruments.
 
-**Gradients match.** `npm run parity` feeds the same weights and batches to PyTorch autograd and to the trainer for 20 steps, then compares every parameter tensor, on five configurations including the tab's own. The worst per-tensor gradient relative L2 is about 1.1e-6, and it moves a little between runs, from 1.06e-6 to 1.13e-6 so far on the M4 Pro.
+**Gradients match.** `npm run parity` feeds the same weights and batches to PyTorch autograd and to the trainer for 20 steps, then compares every parameter tensor, on five configurations including the tab's own. The worst per-tensor gradient relative L2 is about 1.1e-6, 1.12e-6 in the stored run, and it varies slightly between runs.
 
 **Whole runs match.** The tab's model ran 64 seeds both ways, from the same weights on the same batches, one on Metal and the other PyTorch on a CPU. Both reach the same event step and the same anchor step on 64 of 64 seeds, compared at evals 25 steps apart. The anchor is Howe's precursor, the first eval where a first-layer head reaches a previous-token score of 0.10. The worst copy advantage difference is 6.5e-5, and 1328 of 1336 evals differ by under 1e-5 (`results/tab-native-vs-browser.json`). The study's two-layer model matches the same way on 64 of 64 seeds, worst difference 3.2e-6 across 1539 evals (`results/native-vs-browser.json`).
 
@@ -42,11 +42,11 @@ All 64 seeds of the tab's model fire, at a median of step 475 and a range of 400
 
 ## What the study found
 
-The study model is smaller than the tab's, width 64 and context 64 (d=64, T=64), for cost. Most arms ran on a rented 4 vCPU cloud VM with PyTorch on CPU, and the later ones in WGSL on the M4 Pro. Arms ran 64 seeds unless noted and are written (layers, blocks), where a block is one set of weights, so (8,1) is the same block applied 8 times. The plans are in [`research/PREREG.md`](research/PREREG.md), [`research/PREREG-2.md`](research/PREREG-2.md) and [`research/PREREG-3.md`](research/PREREG-3.md), committed before results were read. About 70% of the first plan's 3e-3 arms had already run, unread, when it was committed. Every arm is in [`results/study-table.md`](results/study-table.md).
+The study model is smaller than the tab's, width 64 and context 64 (d=64, T=64), for cost. Most arms ran on a rented 4 vCPU cloud VM with PyTorch on CPU, and the later ones in WGSL on the M4 Pro. Arms ran 64 seeds unless noted and are written (layers, blocks), where a block is one set of weights, so (8,1) is the same block applied 8 times. The plans are in [`research/PREREG.md`](research/PREREG.md), [`research/PREREG-2.md`](research/PREREG-2.md) and [`research/PREREG-3.md`](research/PREREG-3.md). They are committed to git and not externally registered, so their dates rest on that history alone. The public history leaves out a private working log and copies of third-party papers and of Howe's per-seed results, with commit dates kept. About 70% of the first plan's 3e-3 arms had already run, unread, when it was committed. Every arm is in [`results/study-table.md`](results/study-table.md).
 
-Two departures from the plans. `research/PREREG-3.md` allowed up to five seeds of Howe's config A and it stopped at one, to save time on a shared GPU, since more seeds would not change the claim. `research/PREREG-2.md`'s addition arm, the tab's model on Howe's curriculum, ran as `tab-howe-curriculum`.
+Departures from the plans. `research/PREREG-3.md` says it came before any of its runs, and for two files that is not so, and we left its text as it was. `results/config-a.jsonl` was committed before the plan, so the plan ran none of its five listed config A seeds, and seed 1 came earlier, under the first plan's intent. `tab-native` seeds 1 to 8 were run and committed before the plan and sit unchanged in the 64. Their `tab-browser` partners were committed too, then deleted with the plan's commit and rerun under it to log both passes. The plan's spacing test could not be read as written on 3 seeds, and those were extended afterward (below). `research/PREREG-2.md`'s addition arm, the tab's model on Howe's curriculum, ran as `tab-howe-curriculum`.
 
-### The repeat rule carries most of the drop in steps
+### The repeat rule is the largest contrast we can bound, in steps
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/survival-by-curriculum-dark.svg">
@@ -54,7 +54,7 @@ Two departures from the plans. `research/PREREG-3.md` allowed up to five seeds o
   <img alt="Survival curves by curriculum at lr 3e-3. Random characters made periodic have a median event step of 575, Howe's language made periodic 1025, Howe's language with the clone rule 7500 with 12 of 16 seeds fired, and random characters with the clone rule fire on no seed by step 8000." src="docs/survival-by-curriculum-light.svg">
 </picture>
 
-These arms share one model and one learning rate. Random characters made periodic reach the event at a median of step 575. Howe's bigram language made periodic takes 1025. Howe's language with Howe's clone rule takes 7500, with 12 of 16 seeds fired by step 8000. Random characters under the clone rule fired on 0 of 16 by step 8000. Periodic means every sequence tiles at a random period. The clone rule copies the start of a sequence once, at a random offset.
+These arms share one model and one learning rate. Random characters made periodic reach the event at a median of step 575. Howe's language, a synthetic one in which each character has a few likely successors, takes 1025 made periodic. Howe's language with Howe's clone rule takes 7500, with 12 of 16 seeds fired by step 8000. Random characters under the clone rule fired on 0 of 16 by step 8000. Periodic means every sequence tiles at a random period. The clone rule copies the start of a sequence once, at a random offset.
 
 Howe's curriculum against random characters made periodic is a time ratio of 13.1, and that ratio mixes three things. The clone arms used pRep 0.75 and periods [4, 60), and the tiled arms pRep 1 and [4, 32). The third plan changed one factor at a time, 16 seeds a side except the 64 of the first study (`curriculum` in `results/third-summary.json`).
 
@@ -65,7 +65,9 @@ Howe's curriculum against random characters made periodic is a time ratio of 13.
 | Period range | uniform, tiled, pRep 1 | [4, 32), 64 of 64, median 575 | [4, 60), 16 of 16, median 1025 |
 | Period range | Howe's language, clone, pRep 0.75 | [4, 32), 1 of 16 by step 8000 | [4, 60), 12 of 16, median 7500 |
 
-The repeat rule carries most of the drop in steps. The period range changes direction between rules. Under tiling, [4, 60) against [4, 32) is a ratio of 1.78 (1.61 to 1.87), and under the clone rule the shorter periods are the worse ones. These are steps. Time per step depends on model size. Training on random repeats is also not new. shaikabdul185-arch, xanderchinxyz, and gama do it too, and Zucchet et al. ([2505.17863](https://arxiv.org/abs/2505.17863)) found that repetition can greatly speed up the emergence of sparse attention, in theory and on an in-context associative recall task.
+The repeat rule is the largest single-factor contrast we can bound, at least 7.80 on Howe's language and 3.52 on uniform characters. Period range and language under the clone rule leave one side with no median, so each has a bound of only 1.07 and may be larger, and we don't rank them. The period range changes direction between rules. Under tiling, [4, 60) against [4, 32) is a ratio of 1.78 (1.61 to 1.87), and under the clone rule the shorter periods are the worse ones. These are steps. Time per step depends on model size. Training on random repeats is also not new. shaikabdul185-arch, xanderchinxyz, and gama do it too, Zucchet et al. ([2505.17863](https://arxiv.org/abs/2505.17863)) found that repetition can greatly speed up the emergence of sparse attention, in theory and on an in-context associative recall task, and Aoyama et al. ([2511.16893](https://arxiv.org/abs/2511.16893)) found that surface bigram repetition frequency and reliability strongly affect whether induction heads form. Their natural-text experiment moved the slope of the prefix score and not the emergence point, on another measure and other models, so we don't compare effect sizes.
+
+Howe's language can also cross the event with the second pass still worse than a guess. Of the 206 events in run files that log both passes, 3 have a second pass above chance, all on Howe's language under the clone rule: 4.92 to 5.34 against chance at 4.56, with the first pass at 7.10 to 7.37. Their top prefix scores read 0.27 to 0.50. The 28 events in `results/study-curriculum.jsonl` did not log both passes, so we can't say how many of them look the same.
 
 ### Tying weights delays the event at these depths
 
@@ -84,9 +86,11 @@ On random-repeat data, at equal depth, tying weights delayed the event. Two esti
 
 The plan preregistered the log-normal fit. The two disagree where a few runs stall, such as (4,1) at lr 3e-3, where 7 of 64 had no event by step 6000.
 
-Deeper, at lr 3e-3, (8,2) against (8,8) is 2.39 by the fit and 2.46 by medians. (12,4) against (12,12) is 1.74 (1.63 to 1.87) by medians, with no crossover. We did not find this delay reported within our coverage. The closest work finds looped models earlier than a dense model, on other tasks and at greater depth ([2610.31421](https://arxiv.org/abs/2610.31421), [2610.24135](https://arxiv.org/abs/2610.24135)), and we do not claim a contradiction.
+These intervals are not adjusted for multiple contrasts. We read 55 ratio intervals across the study and the third plan, 20 of them on tying. Read at a Bonferroni level of 0.05/55 per interval, the lowest bound of those 20 is 1.26, so tying stays above 1 (`results/contrast-correction.json`). The Kaplan-Meier intervals are for the median on the 25-step eval grid. In a simulation at n=64 with the (2,2) arm's median and spread, the percentile interval covered the grid median in 97.8 to 100 percent of draws, and the continuous median in 0.4 to 97.8 percent, depending on where that median falls inside a grid cell. We did not simulate the ratio intervals.
 
-(8,1) is its own case. The earlier 32 seeds had no event by step 4000. Run to step 16000, 8 of 8 fire, at a median of step 7150. Its prefix score at the event stays at or below 0.089, and every other arm in every file reads at least 0.27. So that arm copies by a route the prefix score does not see, and the event alone does not show an induction head there. This is exploratory, on 8 seeds, and we do not explain it here.
+Deeper, at lr 3e-3, (8,2) against (8,8) is 2.39 by the fit and 2.46 by medians. (12,4) against (12,12) is 1.74 (1.63 to 1.87) by medians, with no crossover. We did not find this delay reported within our coverage. The closest work finds looped models earlier than a dense model, on other tasks, and we do not claim a contradiction. [2610.31421](https://arxiv.org/abs/2610.31421) applies a 4-layer block 3 times against a dense 12-layer model, the shape of (12,4), so depth does not separate that result from ours. [2610.24135](https://arxiv.org/abs/2610.24135) compares a 4-layer block applied 8 times with an untied 32-layer model, deeper than any arm here.
+
+(8,1) is its own case. The earlier 32 seeds had no event by step 4000. Run to step 16000, 8 of 8 fire, at a median of step 7150. Its prefix score at the event stays at or below 0.089, and every other arm in every file reads at least 0.27, with a second pass of 2.89 to 3.27 at that step. So the event alone does not show an induction head there. These runs stop at the event, so this rests on one eval per run and says nothing about what forms later. This is exploratory, on 8 seeds, and we do not explain it here.
 
 We did not separate effective step size from structure. A tied block's gradient sums across its passes, Adam rescales each parameter by its running gradient magnitude, and lowering lr from 3e-3 to 1e-3 slowed looped arms further, (4,1) from 1825 to 4950.
 
@@ -96,7 +100,7 @@ Untied depth is nearly free in steps. 4 layers against 2 is 1.13 at lr 3e-3 and 
 
 Howe's fleet puts the anchor at a steady fraction of the time to the event, inside a frozen envelope of [0.735, 0.901]. Across the study's arms at depths 2 to 4 the median fraction runs from 0.727 to 0.848. The preregistered falsifier fired for three arms just under the envelope, (2,2) and (3,3) at lr 3e-3 and (2,2) at lr 1e-3.
 
-A second plan predicted that the anchor's distance from chance caused the miss, and tested a rescaled anchor. Under that anchor (2,1) at T=64 reads 0.903 against 0.901, so the prediction failed literally on one arm (`results/anchor-summary.json`). Eval spacing explains part of the miss on (2,2) at lr 3e-3 instead. The third plan reran that arm's own seeds at 5-step evals. Reading those runs every 25 steps reproduces the study's event and anchor on 61 of 61 readable seeds, and 3 seeds stopped before the coarse event. The gap is 0.748 at 5-step evals against 0.727 at 25-step (`spacing` in `results/third-summary.json`). The other two arms were not rerun at 5-step evals. At T=128 and 5-step evals, 64 seeds, (2,2) reads 0.798 and (2,1) 0.862, inside the envelope.
+A second plan predicted that the anchor's distance from chance caused the miss, and tested a rescaled anchor. Under that anchor (2,1) at T=64 reads 0.903 against 0.901, so the prediction failed literally on one arm (`results/anchor-summary.json`). Eval spacing explains part of the miss on (2,2) at lr 3e-3 instead. The third plan reran that arm's own seeds at 5-step evals, continuing 75 steps past the event, and voided the test unless reading those runs every 25 steps gave the study's event on every seed. As planned it could not be read on 3 seeds, 17, 23 and 51, because their runs stopped before their coarse event. The other 61 reproduce the study's event and anchor. We then extended those 3 to 400 steps past the event, which the plan did not name, and their curves match the first runs wherever the two overlap. With them, 64 of 64 seeds reproduce the study's event and 64 of 64 its anchor. The gap is 0.748 at 5-step evals against 0.727 at 25-step, the same medians as on the 61, with a paired median difference of 0.026 (`spacing` in `results/third-summary.json`). The other two arms were not rerun at 5-step evals. At T=128 and 5-step evals, 64 seeds, (2,2) reads 0.798 and (2,1) 0.862, inside the envelope.
 
 Spacing does not explain Howe's curriculum on the small model at 0.628, or (8,2) at 0.683, and the deepest tied arms sit lower, (12,4) at 0.495 and (8,1) at 0.161. Those are still open.
 
@@ -109,7 +113,7 @@ Config A is Howe's own setup, on this trainer: V=2048, T=256, d=256, B=64, lr 1e
 | Gunner Howe's fleet | 30 | median 6300, range 5650 to 7400 | median 0.844 |
 | This trainer | 1 | 6225 | 0.847 |
 
-Seed 1 took 24 minutes at 232 ms per step. The bigram table differs from Howe's, because Howe's table cannot be rebuilt without PyTorch's generator. This is one seed, so it is one draw, inside Howe's reported range and near Howe's median fraction, and it says nothing about the fleet's spread. Everything else here extends Howe's instruments to other models and curricula.
+The range is in Howe's arXiv text. The 6300 and the 0.844 are computed from the per-seed results in [Howe's repository](https://github.com/gunnerhowe/Research), `mem-gen-delay/analysis/out6/r2_scored.json` at commit 493c4bf. Seed 1 took 24 minutes at 232 ms per step. The bigram table differs from Howe's, because Howe's table cannot be rebuilt without PyTorch's generator. This is one seed, so it is one draw, inside Howe's reported range and near Howe's median fraction, and it says nothing about the fleet's spread. Everything else here extends Howe's event and anchor to other models and curricula.
 
 ### Two exploratory reads
 
@@ -128,10 +132,11 @@ GPU commands need Google Chrome installed. `bench`, `breakdown`, `parity`, `veri
 
 | Claim | Number | Command | Output file |
 |---|---|---|---|
-| Seconds to the event, M4 Pro | median 4.9 s, 10.3 ms per step | `npm run bench` | `results/bench-m4pro.txt` |
+| Seconds to the event, M4 Pro, drawing off | median 4.9 s, 10.3 ms per step | `npm run bench` | `results/bench-m4pro.txt` |
+| The page's clock, drawing on, beside another GPU job | median 8.7 s, least loaded 5.8 s, 1.4 times the benchmark beside it | `node tools/watched.mjs` | `results/watched-m4pro.json` |
 | Where a step goes | 8.44 of 10.04 ms in matrix multiplies | `npm run breakdown` | `results/breakdown-m4pro.txt` |
 | Native speed | MPS 5.5, CPU 13.9 ms per step | `npm run speed-native` | `results/native-speed.json` |
-| Gradients against PyTorch | about 1.1e-6 relative L2 at worst, 1.06e-6 to 1.13e-6 across runs | `npm run parity` | `results/parity-apple-metal-3.json` |
+| Gradients against PyTorch | about 1.1e-6 relative L2 at worst, 1.12e-6 in the stored run | `npm run parity` | `results/parity-apple-metal-3.json` |
 | Whole runs, the tab's model | 64 of 64 seeds, worst difference 6.5e-5, 1328 of 1336 evals under 1e-5 | `npm run compare-tab` | `results/tab-native-vs-browser.json` |
 | Whole runs, the study model | 64 of 64 seeds, worst difference 3.2e-6 | `npm run compare` | `results/native-vs-browser.json` |
 | Tab seeds, event and stalls | 64 of 64, median 475, range 400 to 700 | `.venv/bin/python tools/analyze_third.py` | `results/third-summary.json`, `tab` |
@@ -145,7 +150,9 @@ GPU commands need Google Chrome installed. `bench`, `breakdown`, `parity`, `veri
 | One factor at a time | 16 of 16 against 2 of 16, 1.78, and the rest | `.venv/bin/python tools/analyze_third.py` | `results/third-summary.json`, `curriculum` |
 | Depth 8 with 1 block and depth 12 | 7150, 0.089, 1.74 | `npm run study` | `results/study-table.md`, last column for the prefix score |
 | Gap across arms at depths 2 to 4 | 0.727 to 0.848 | `npm run study` | `results/study-summary.json` |
-| Gap against spacing, same seeds | 61 of 61, 0.748, 0.727 | `.venv/bin/python tools/analyze_third.py` | `results/third-summary.json`, `spacing` |
+| Gap against spacing, same seeds | 61 as planned, 64 of 64 extended, 0.748, 0.727 | `node tools/runs.mjs fine-2-2-extra`, then `.venv/bin/python tools/analyze_third.py` | `results/fine-2-2-extra.jsonl`, `results/third-summary.json`, `spacing` |
+| Tying intervals under Bonferroni, grid coverage | 55 intervals, lowest bound 1.26, 97.8 to 100 percent | `.venv/bin/python tools/analyze_contrasts.py` | `results/contrast-correction.json` |
+| Second pass above chance at the event | 3 of 206, 4.92 to 5.34 | `python3 paper/numbers.py --write` | `paper/numbers.tex`, `nLang*` |
 | Gap against threshold and context | 0.903, 0.798, 0.862 | `npm run anchor` | `results/anchor-summary.json` |
 | Config A | event 6225, fraction 0.847 | `npm run read-runs` | printed, from `results/config-a.jsonl` |
 | Heads scoring on both passes | 2 or 3 of 4, 8 seeds | `npm run heads` | `results/heads-looped-2-1.json` |
@@ -188,7 +195,7 @@ SEEDS=2-30 npm run config-a
 ## What is not verified
 
 - **Other browsers and GPUs.** Safari, Firefox, real phones, and non-Apple GPUs have not been measured. Only an M4 Pro and SwiftShader have, so this repo makes no claim about an ordinary laptop. One automated Safari check timed out in a background tab (`tools/safari.mjs`).
-- **The clock while you watch.** The 4.9 s comes from the benchmark, which holds the page still. A run you watch also draws, so expect its clock to read higher. We have no timing of the drawing page on an idle GPU.
+- **The clock while you watch.** The 4.9 s comes from the benchmark, which holds the page still and draws nothing. Our readings with drawing on, 8.7 s and 5.8 s at the least loaded, came from headless Chrome with another job on the GPU. We have no timing of the drawing page on an idle GPU, so the cost of drawing is unmeasured.
 - **How often a seed stalls.** All 64 seeds fire on the tab's model on an M4 Pro, which does not rule out a rare stall. The small model does stall. At width 64 and context 128, 5 of 64 and 2 of 64 seeds had no event by step 6000. The page says so when this happens and offers a new seed.
 - **Novelty.** "Not found" means not found within the searches logged in [`research/NOVELTY-2.md`](research/NOVELTY-2.md). The two closest demos are low visibility and turned up late, so others may exist.
 
@@ -202,10 +209,11 @@ SEEDS=2-30 npm run config-a
 
 Other browser demos train induction heads live, including TheoremPath's lab and gama's Induction, both on the CPU or without a stated GPU backend. This one runs on the viewer's GPU in hand-written WGSL, keeps MLPs and LayerNorm, and streams previous-token and induction scores with head ablation on one page. We did not find that combination within our search coverage.
 
-- Gunner Howe wrote [arXiv 2609.19000](https://arxiv.org/abs/2609.19000), the source of the instruments and the transition. Gunner Howe and Vin Howe are different people.
+- Gunner Howe wrote [arXiv 2609.19000](https://arxiv.org/abs/2609.19000), the source of the 2-nat event, the 0.10 anchor, the anchor's fraction and envelope, and the transition. Gunner Howe and Vin Howe are different people.
 - Zucchet et al. wrote [arXiv 2505.17863](https://arxiv.org/abs/2505.17863), which found that repetition can greatly speed up the emergence of sparse attention.
 - Vin Howe made [Sequence Toy](https://sequence.toys) and [Piston](https://github.com/vinhowe/piston), which train sequence models in the browser on WebGPU.
-- Olsson et al. 2022 described the circuit in [In-context Learning and Induction Heads](https://transformer-circuits.pub/2022/in-context-learning-and-induction-heads/index.html).
+- Olsson et al. 2022 described the circuit and defined the head scores, prefix matching and previous token attention, on repeated random tokens, in [In-context Learning and Induction Heads](https://transformer-circuits.pub/2022/in-context-learning-and-induction-heads/index.html).
+- Reddy ([2312.03002](https://arxiv.org/abs/2312.03002)), Singh et al. ([2404.07129](https://arxiv.org/abs/2404.07129)) and Aoyama et al. ([2511.16893](https://arxiv.org/abs/2511.16893)) studied what sets the formation of induction heads, on other setups.
 - [TheoremPath Induction Heads Lab](https://theorempath.com/demo/induction-heads-lab) trains a two-layer model in the browser with head ablation.
 - [gama](https://github.com/pariharshyamu/gama) by pariharshyamu trains and draws its Induction model live.
 - [TabGPT](https://github.com/jbingen/tabgpt) and [webgpu-llm](https://github.com/toprakdeviren/webgpu-llm) write their training kernels by hand in WGSL.
