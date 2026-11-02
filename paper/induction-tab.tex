@@ -1,0 +1,372 @@
+\documentclass[10pt]{article}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage[letterpaper,margin=1in]{geometry}
+\usepackage{booktabs}
+\usepackage{tabularx}
+\usepackage{caption}
+\usepackage{tikz}
+\usepackage{microtype}
+\usepackage[hidelinks]{hyperref}
+\captionsetup{font=small,labelfont=bf,skip=6pt}
+\setlength{\emergencystretch}{1.5em}
+\exhyphenpenalty=10000
+\makeatletter
+\renewcommand\paragraph{\@startsection{paragraph}{4}{\z@}{1.4ex plus .4ex minus .2ex}{-1em}{\normalfont\normalsize\bfseries}}
+\makeatother
+\hypersetup{pdftitle={Induction heads in a browser tab},pdfauthor={Abhay Mettu}}
+\clubpenalty=10000
+\widowpenalty=10000
+\input{numbers.tex}
+\newcommand{\arm}[2]{(#1,#2)}
+\let\periodsLong\nRangeLong
+\renewcommand{\nRangeLong}{\mbox{\periodsLong}}
+\let\periodsShort\nRangeShort
+\renewcommand{\nRangeShort}{\mbox{\periodsShort}}
+\let\periodsTab\nTabRange
+\renewcommand{\nTabRange}{\mbox{\periodsTab}}
+
+\title{\vspace*{-2.5em}Induction heads in a browser tab: a hand-written WebGPU trainer, and what the repeat rule and weight tying do to onset}
+\author{Abhay Mettu\\Independent\\[2pt]\small\url{https://github.com/abhaymettu/induction-tab}\\\small\url{https://abhaymettu.github.io/induction-tab/}}
+\date{\vspace{-1.5em}}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+Induction heads form abruptly during training, and a reader of that literature usually meets the transition as a plot from a finished run. This paper trains a two-layer transformer through the transition in a browser tab, on the viewer's GPU, in a median of \nBenchMedianSeconds\ s on an M4 Pro. The trainer is hand-written WGSL for the forward pass, the backward pass and AdamW. Against PyTorch it reaches the same event and anchor step on \nWholeTabSeeds\ of \nWholeTabSeeds\ seeds at each of two model sizes, with runs compared up to the event. We then apply Gunner Howe's instruments to a smaller study model, under three plans committed before their results were read, with \nNEightOneHi\ to \nNTwoTwoHi\ seeds per arm. First, the repeat rule carries most of the drop in steps. With everything else fixed, tiled repeats fire on \nRuleBiTiledEv\ of \nRuleBiCloneN\ seeds at a median of step \nRuleBiTiledMed, and Howe's clone rule on \nRuleBiCloneEv\ of \nRuleBiCloneN\ by step \nCrossedBudget. The period range changes direction between the two rules. Second, on random repeats, tying weights delayed the event at equal depth, with time ratios of \nFitTwoOneVsTwoTwoHi, \nFitThreeOneVsThreeThreeHi\ and \nFitFourOneVsFourFourHi\ at depths 2, 3 and 4 and lr \nLrHi. The delay holds at both learning rates and at depth 12, with no crossover, and we did not separate effective step size from structure. Third, the anchor fraction fell below Howe's envelope on \nArmsOutside\ arms. Eval spacing explains part of one miss, and the deepest tied arms stay outside at \nGapTwelveFourHi\ and \nGapEightOneHi.
+\end{abstract}
+
+\section{Introduction}
+\label{sec:intro}
+
+This paper trains a transformer through the induction transition in a browser tab, on the viewer's own GPU, while the viewer watches. For the first few hundred steps the model has learned nothing. Then three things happen close together. The second copy of a repeated random sequence lights up as the model starts to predict it, the attention maps draw the two lines that Olsson et al.~\cite{olsson} described as the induction circuit, and the copy advantage crosses 2 nats. On an M4 Pro in Chrome, seeds 1 to \nBenchSeeds\ reach that event at steps \nBenchEvents, which is \nBenchSeconds\ s. The viewer can then type a string that repeats and watch the model continue it, or silence a head and watch copying stop.
+
+The point of doing this in a tab is that the transition becomes something a person can watch and poke. A run is short enough to repeat with another seed, a head can be silenced as soon as its line appears, and nothing has to be installed. Pope and Tedre's Little Language Machine~\cite{llm} reports a shift in how students explain language models after training one in the browser. We ran no study of learners and make no claim about teaching.
+
+Other browser demos train induction heads live, including TheoremPath's lab~\cite{theorempath} and gama's Induction~\cite{gama}, both on the CPU or without a stated GPU backend. This one runs on the viewer's GPU in hand-written WGSL, keeps MLPs and LayerNorm, and streams previous-token and induction scores with head ablation on one page. We did not find that combination within our search coverage. TabGPT~\cite{tabgpt} and webgpu-llm~\cite{webgpullm} also write their training kernels by hand in WGSL, and Vin Howe's Piston and Sequence Toy~\cite{piston} train sequence models in the browser on WebGPU through an automatic differentiation library.
+
+Beyond the demo, this paper reports the following. Section~\ref{sec:trainer} checks the trainer against PyTorch and times it. Section~\ref{sec:instruments} says what Gunner Howe's instruments~\cite{howe} do and do not measure. Section~\ref{sec:configa} reports one draw at Howe's own configuration. Sections~\ref{sec:onset} and~\ref{sec:forecast} use the instruments on a small study model to ask what sets the onset of the event and whether Howe's forecast holds there. Section~\ref{sec:exploratory} lists exploratory reads, and Section~\ref{sec:prereg} reports what failed. Nothing here is a statement about large models. The study model has width \nStudyD\ and context \nStudyT.
+
+\section{The trainer}
+\label{sec:trainer}
+
+The page uses no ML library. The forward pass, the backward pass and AdamW are hand-written WGSL compute shaders in 32-bit floats, and one training step is \nDispatches\ dispatches. The model follows Howe's block layout: pre-LayerNorm, attention and a GELU MLP, learned absolute positions, a final LayerNorm and an untied unembedding. The tab's model has vocabulary V=\nTabV, context T=\nTabT, width d=\nTabD, H=\nTabH\ heads, two layers, an MLP ratio of \nTabMlp, batch \nTabB\ and lr \nTabLr, for \nTabParams\ parameters, with LayerNorm that has no learned gains. AdamW uses betas of \nBetaOne\ and \nBetaTwo, eps \nEps, weight decay \nWeightDecay\ and a \nWarmup-step linear warmup, as Howe's trainer does. Training data is uniform random tokens tiled at a random period in \nTabRange, so the one thing to learn is that characters repeat.
+
+\paragraph{Gradients.} A parity tool feeds the same weights and batches to PyTorch autograd and to the trainer for \nParitySteps\ steps and compares every parameter tensor, on \nParityConfigs\ configurations including the tab's own. In the stored run on the M4 Pro, the worst per-tensor relative L2 difference is \nParityGrad\ for a gradient and \nParityParam\ for a parameter, and the largest absolute loss difference is \nParityLoss. A stored run of \nSwiftConfigs\ configurations on SwiftShader reads \nSwiftGrad\ for a gradient.
+
+\paragraph{Whole runs.} Table~\ref{tab:whole} compares complete runs on \nWholeTabSeeds\ seeds at two model sizes. One stack is WGSL on Metal and the other is PyTorch on a CPU. Both start from the same weights and draw the same batches, because the parameter layout, the initializer, the random number generator and the data code are mirrored in the two stacks. Both reach the same event step and the same anchor step on every seed, compared at evals \nEvalEvery\ steps apart. The runs stop at the event, so this agreement says nothing about training after it. Bitwise equality was not expected and is not what Table~\ref{tab:whole} shows.
+
+\begin{table}[t]
+\centering
+\small
+\caption{The WGSL trainer against PyTorch, seed by seed, up to the event. The anchor and the event are defined in Section~\ref{sec:instruments}.}
+\label{tab:whole}
+\begin{tabular}{lrr}
+\toprule
+ & Tab model (d=\nTabD, T=\nTabT) & Study model (d=\nStudyD, T=\nStudyT) \\
+\midrule
+Seeds & \nWholeTabSeeds & \nWholeStudySeeds \\
+Same event step & \nWholeTabSameEvent & \nWholeStudySameEvent \\
+Same anchor step & \nWholeTabSameAnchor & \nWholeStudySameAnchor \\
+Median event step, each stack & \nWholeTabMedianEvent & \nWholeStudyMedianEvent \\
+Evals compared & \nWholeTabEvals & \nWholeStudyEvals \\
+Evals with copy advantage within \nUnderTol & \nWholeTabUnder & \nWholeStudyUnder \\
+Worst copy advantage difference (nats) & \nWholeTabWorstCopy & \nWholeStudyWorstCopy \\
+Worst training loss difference (nats) & \nWholeTabWorstLoss & \nWholeStudyWorstLoss \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+All \nTabRuns\ seeds of the tab's model fire, at a median of step \nTabMedian\ and a range of \nTabEventMin\ to \nTabEventMax, with \nTabStalled\ stalls by step \nTabBudget.
+
+\paragraph{Timing.} On an M4 Pro in Chrome \nBrowserVersion, with nothing else on the GPU, the benchmark takes \nBenchMsPerStep\ ms per step and a median of \nBenchMedianSeconds\ s to the event. Native PyTorch \nTorchVersion\ is faster on the same machine and configuration. MPS takes \nMpsMs\ ms per step, about \nMpsFaster\ times faster than this trainer, and \nCpuThreads\ CPU threads take \nCpuMs\ ms. The comparison is not exact, because the native figure is a median step with no evals and with batches built ahead of time, and the \nBenchMsPerStep\ ms is wall time that includes evals. A replayed step with no evals takes \nStepMs\ ms, and against that figure MPS is \nMpsFasterReplay\ times faster. A tab does not beat native here. It trades speed for needing nothing installed.
+
+A replayed step splits by phase into \nPhaseFwd\ ms forward, \nPhaseLoss\ ms loss, \nPhaseBwd\ ms backward and \nPhaseOpt\ ms in the optimizer. By kernel, matrix multiplies (\nGemmDispatches\ of the \nDispatches\ dispatches) take \nGemmMs\ ms, or \nGemmShare\ percent of the step. The next largest are the embedding backward pass at \nEmbedBwdMs\ ms and token indexing at \nTokenIndexMs\ ms, and every other kernel takes \nLnFwdMs\ ms or less. Chrome quantizes timestamp queries more coarsely than one dispatch, so these come from replaying each subset of dispatches alone, the sequential-dispatch method of Maczan~\cite{maczan}, and the kernel times sum to \nKernelSum\ ms against the whole step's \nStepMs. Only an M4 Pro and SwiftShader have been measured, so we make no claim about an ordinary laptop or any other GPU.
+
+\section{The instruments, and what they do not measure}
+\label{sec:instruments}
+
+All of these come from Gunner Howe~\cite{howe} and we use them as defined there. The probe is a fixed batch of repeated uniform random sequences [x; x]. \emph{Copy advantage} is the mean cross-entropy on the first pass through x minus the mean on the second. The \emph{event} is a copy advantage of 2 nats or more on two consecutive evals, reported at the second. The \emph{previous-token score} of a head is its average attention from a position to the position just before it, and the \emph{prefix score} is its average attention to the token after the earlier copy of the current token. The \emph{anchor} is the first eval where a first-layer head reaches a previous-token score of \nAnchorThreshold. For deeper models the study takes the maximum over the first half of the applied layers, the way Howe's emergence-watch package generalizes it. The \emph{anchor fraction} is anchor step over event step. Across \nLawRuns\ valid-anchor runs Howe reports a median fraction of \nLawMedian\ and freezes an envelope of event step between \nEnvRatioLow\ and \nEnvRatioHigh\ times anchor step, which is a fraction from \nEnvLow\ to \nEnvHigh.
+
+Copy advantage does not measure copying alone. The best possible first-pass loss is chance, ln \nTabV\ = \nChance\ nats, and a model that expects repeats guesses wrong on characters it has not seen, so its first pass climbs above chance. On the tab's model at the event, over \nTabRuns\ seeds, the first pass is \nTabFirstPass, the second pass is \nTabSecondPass, the advantage is \nTabAdvantage, and a median \nTabShare\ percent of the advantage is the first pass rising above chance. At step \nSavedStep\ on seed 1 the advantage is \nSavedAdv, with a first pass of \nSavedFirst\ and a second of \nSavedSecond. The event's definition stays Howe's, and it should be read as a behavioral threshold with this penalty inside it.
+
+The previous-token score has a chance level that moves with the probe. The score of uniform causal attention over T positions is $b(T) = (H_T - 1)/(T - 1)$, with $H_T$ the harmonic number, which is \nBaseOneTwentyEight\ at T=\nPlanTwoT\ and \nBaseSixtyFour\ at T=\nStudyT. Howe's \nAnchorThreshold\ is therefore \nMultHigh\ times this baseline on Howe's \nCfgAProbeT-token probe and \nMultLow\ times it on a \nStudyT-token probe. Howe reports the baseline empirically (about \nHoweBaselineMult\ times baseline at \nHoweBaselineScore). We did not find the closed form or this dependence on probe length stated within our coverage. It is a small observation, and Section~\ref{sec:forecast} tests how much it explains.
+
+The negative controls test the instruments. One layer has no head beneath it to read the previous character, and a model that never sees a repeat has nothing to copy. On the tab's model each ran \nNegSeeds\ seeds for \nNegBudget\ steps with zero events. One layer peaked at \nNegTabLayer\ nats of copy advantage and no repeats at \nNegTabNoRep. The same controls on the study model also had zero events, with peaks of \nNegStudyLayer\ and \nNegStudyNoRep. The one-layer peak is not zero. At that eval the first pass reads \nNegLayerFirst\ and the second \nNegLayerSecond, below chance, so one layer gets part of the way and the 2-nat threshold is what separates it. Howe's event also does not show an induction head by itself, as the arm in Section~\ref{sec:exploratory} makes plain.
+
+\section{One draw at Howe's config A}
+\label{sec:configa}
+
+Config A is Howe's own setup, run on this trainer: V=\nCfgAV, T=\nCfgAT, d=\nCfgAD, H=\nCfgAH, batch \nCfgAB, lr \nCfgALr, Howe's bigram language and clone rule, a \nCfgAProbeT-token probe, and Howe's anchor and event. Table~\ref{tab:configa} sets the result beside Howe's fleet. Seed \nCfgASeed\ took \nCfgAMinutes\ minutes at \nCfgAMsPerStep\ ms per step. The bigram table differs from Howe's, because Howe's table cannot be rebuilt without PyTorch's generator, and Howe's own Gate C also ran a fresh table.
+
+\begin{table}[h]
+\centering
+\small
+\caption{Config A with Howe's anchor and event.}
+\label{tab:configa}
+\begin{tabular}{lrll}
+\toprule
+ & Seeds & Event step & Anchor over event \\
+\midrule
+Gunner Howe's fleet & \nHoweSeeds & median \nHoweEventMedian, range \nHoweEventMin\ to \nHoweEventMax & median \nHoweFraction \\
+This trainer & 1 & \nCfgAEvent & \nCfgAFraction \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+This is one seed, so it is one draw, inside Howe's reported range and near Howe's median fraction. It is a one-draw replication at most and it says nothing about the fleet's spread. The third plan allowed up to \nCfgASeedsAllowed\ seeds and the run stopped at one, to save time on a shared GPU, since more seeds would not change the claim. It is not a rerun of the fleet, and everything else in this paper extends Howe's instruments to other models and curricula.
+
+\section{What sets the onset}
+\label{sec:onset}
+
+The study model is smaller than the tab's for cost: V=\nStudyV, d=\nStudyD, T=\nStudyT, H=\nStudyH, batch \nStudyB, for \nStudyParams\ parameters at two layers. Most arms ran with PyTorch on CPU on a rented 4 vCPU cloud machine, and the later ones in WGSL on the M4 Pro, which Table~\ref{tab:whole} supports. Arms ran \nNTwoTwoHi\ seeds unless noted and are written (layers, blocks), where a block is one set of weights and block index is layer index modulo the block count, so \arm{8}{1} is the same block applied 8 times. The main arms ran at lr \nLrHi\ and \nLrLo, with evals every \nEvalEvery\ steps and budgets of \nBudgetTwoTwoHi\ and \nBudgetTwoTwoLo\ steps, and runs that do not fire are right-censored at their budget. A time ratio is $\exp(\mu_a - \mu_b)$ from censored log-normal fits to two arms' event steps, with a bootstrap 95\% interval from \nBootResamples\ resamples over seeds. Every result below is in steps. Time per step depends on model size, and this paper compares no wall clocks across models.
+
+\subsection{Curriculum}
+
+Periodic, or tiled, means every sequence tiles a random block at a random period. Howe's clone rule copies the start of a sequence once, at a random offset. Figure~\ref{fig:survival} shows the four curricula on one model at one learning rate. Random characters made periodic reach the event at a median of step \nMedTwoTwoHi. Howe's bigram language made periodic takes \nMedBiTiled. Howe's language with the clone rule takes \nMedBiClone, with \nEvBiClone\ of \nNBiClone\ seeds fired by step \nBudgetBiClone. Random characters under the clone rule fired on \nEvUniClone\ of \nNUniClone. Howe's curriculum against random characters made periodic is a time ratio of \nCompound\ (\nCompoundCi), and that ratio mixes three things, because the clone arms used a repeat probability of \nPRepLow\ and periods \nRangeLong, and the tiled arms a probability of 1 and periods \nRangeShort. The third plan changed one factor at a time, with the results in Table~\ref{tab:factors}.
+
+\begin{figure}[t]
+\centering
+\input{fig-survival.tex}
+\caption{Kaplan-Meier survival by curriculum on the \arm{2}{2} study model at lr \nLrHi. Each line is one curriculum, with \nNTwoTwoHi\ seeds for random tiled and \nNBiClone\ for each of the others, all from one budget of \nBudgetBiClone\ steps except random tiled at \nBudgetTwoTwoHi. Censored runs end at the tick on the right: \nEvBiClone\ of \nNBiClone\ fired under Howe's language with the clone rule, and \nEvUniClone\ of \nNUniClone\ for random tokens with the clone rule. A marker shows each median. No tiled run was censored.}
+\label{fig:survival}
+\end{figure}
+
+\begin{table}[t]
+\centering
+\small
+\caption{One factor changed at a time, on the study's \arm{2}{2} model at lr \nLrHi, with a budget of \nCrossedBudget\ steps. Here $p$ is the repeat probability, ``language'' is Howe's bigram language, and ``uniform'' is uniform random tokens. Arms have \nRuleBiCloneN\ seeds, except the \nNTwoTwoHi-seed main arm at periods \nRangeShort.}
+\label{tab:factors}
+\begin{tabular}{llll}
+\toprule
+Changed alone & Held fixed & One side & Other side \\
+\midrule
+Repeat rule & language, $p$=1, \nRangeShort & tiled, \nRuleBiTiledEv\ of \nRuleBiCloneN, median \nRuleBiTiledMed & clone, \nRuleBiCloneEv\ of \nRuleBiCloneN \\
+Repeat rule & uniform, $p$=\nPRepLow, \nRangeLong & tiled, \nRuleUniTiledEv\ of \nRuleBiCloneN, median \nRuleUniTiledMed & clone, \nRuleUniCloneEv\ of \nRuleBiCloneN \\
+Period range & uniform, tiled, $p$=1 & \nRangeShort, \nEvTwoTwoHi\ of \nNTwoTwoHi, median \nMedTwoTwoHi & \nRangeLong, \nRangeUniLongEv\ of \nRuleBiCloneN, median \nRangeUniLongMed \\
+Period range & language, clone, $p$=\nPRepLow & \nRangeShort, \nRangeBiShortEv\ of \nRuleBiCloneN & \nRangeLong, \nRangeBiLongEv\ of \nRuleBiCloneN, median \nRangeBiLongMed \\
+Repeat rate & uniform, tiled, \nRangeLong & $p$=1, \nRangeUniLongEv\ of \nRuleBiCloneN, median \nRangeUniLongMed & $p$=\nPRepLow, \nRuleUniTiledEv\ of \nRuleBiCloneN, median \nRuleUniTiledMed \\
+Repeat rate & language, clone, \nRangeShort & $p$=1, \nRuleBiCloneEv\ of \nRuleBiCloneN & $p$=\nPRepLow, \nRangeBiShortEv\ of \nRuleBiCloneN \\
+Language & tiled, $p$=1, \nRangeShort & uniform, \nEvTwoTwoHi\ of \nNTwoTwoHi, median \nMedTwoTwoHi & language, \nEvBiTiled\ of \nNBiTiled, median \nMedBiTiled \\
+Language & clone, $p$=\nPRepLow, \nRangeLong & uniform, \nEvUniClone\ of \nNUniClone & language, \nEvBiClone\ of \nNBiClone, median \nMedBiClone \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The repeat rule carries most of the drop in steps. On Howe's language, tiling fires on every seed and the clone rule on \nRuleBiCloneEv\ of \nRuleBiCloneN, so the clone arm has no median by step \nCrossedBudget\ and the ratio is at least \nRuleBiBound. On uniform tokens the same bound is \nRuleUniBound. The period range changes direction between rules. Under tiling, \nRangeLong\ against \nRangeShort\ is a ratio of \nRangeUniRatio\ (\nRangeUniCi), and under the clone rule the shorter periods are the worse ones. Repeat rate is smaller, at a ratio of \nRateRatio\ (\nRateCi) for a probability of \nPRepLow\ against 1 under tiling, which the plan did not name as a contrast but which its arms contain. Language also changes direction. Under tiling it is a time ratio of \nLanguageFit\ (\nLanguageFitCi) against uniform tokens, and under the clone rule it is the only one of the two that fires.
+
+Training on random repeats is not new. shaikabdul185-arch~\cite{shaik}, xanderchinxyz~\cite{xander} and gama~\cite{gama} do it too, and Zucchet et al.~\cite{zucchet} found that repetition can greatly speed up the emergence of sparse attention, in theory and on an in-context associative recall task. The result here is the attribution, one factor at a time, on one model. Howe's curriculum does not transfer to the tab's size in the steps a tab can spare. The tab's own model on Howe's language and clone rule fired on \nTabHoweEv\ of \nTabHoweN\ seeds by step \nTabHoweBudget. We stopped there, so this does not say it never would.
+
+\subsection{Weight tying}
+
+On random-repeat data, at equal depth, tying weights delayed the event. Table~\ref{tab:tying} gives both estimators at both learning rates, and Figure~\ref{fig:depth} shows the medians. The plan preregistered the censored log-normal fit, and we added the ratio of Kaplan-Meier medians after correcting the fit (Section~\ref{sec:prereg}). The two agree where every run fires. They disagree where a few runs stall, such as \arm{4}{1} at lr \nLrHi, where \nCensorFourOne\ of \nNFourOneHi\ had no event by step \nBudgetFourOneHi, because censored runs pull the fit's mean log time upward and leave the median alone. Steps are multiples of \nEvalEvery, so a Kaplan-Meier interval can touch its own point estimate.
+
+\begin{table}[t]
+\centering
+\small
+\caption{Time ratio of a tied arm against the untied arm of equal depth, with bootstrap 95\% intervals over seeds. Seeds per arm: \nNTwoTwoHi\ at depths 2 to 4, \nNEightTwoHi\ at depth 8, \nNTwelveFourHi\ at depth 12.}
+\label{tab:tying}
+\begin{tabular}{lllll}
+\toprule
+Contrast & \multicolumn{2}{c}{lr \nLrHi} & \multicolumn{2}{c}{lr \nLrLo} \\
+ & Censored log-normal & KM medians & Censored log-normal & KM medians \\
+\midrule
+\arm{2}{1} / \arm{2}{2} & \nFitTwoOneVsTwoTwoHi\ (\nFitCiTwoOneVsTwoTwoHi) & \nKmTwoOneVsTwoTwoHi\ (\nKmCiTwoOneVsTwoTwoHi) & \nFitTwoOneVsTwoTwoLo\ (\nFitCiTwoOneVsTwoTwoLo) & \nKmTwoOneVsTwoTwoLo\ (\nKmCiTwoOneVsTwoTwoLo) \\
+\arm{3}{1} / \arm{3}{3} & \nFitThreeOneVsThreeThreeHi\ (\nFitCiThreeOneVsThreeThreeHi) & \nKmThreeOneVsThreeThreeHi\ (\nKmCiThreeOneVsThreeThreeHi) & \nFitThreeOneVsThreeThreeLo\ (\nFitCiThreeOneVsThreeThreeLo) & \nKmThreeOneVsThreeThreeLo\ (\nKmCiThreeOneVsThreeThreeLo) \\
+\arm{4}{1} / \arm{4}{4} & \nFitFourOneVsFourFourHi\ (\nFitCiFourOneVsFourFourHi) & \nKmFourOneVsFourFourHi\ (\nKmCiFourOneVsFourFourHi) & \nFitFourOneVsFourFourLo\ (\nFitCiFourOneVsFourFourLo) & \nKmFourOneVsFourFourLo\ (\nKmCiFourOneVsFourFourLo) \\
+\arm{4}{2} / \arm{4}{4} & \nFitFourTwoVsFourFourHi\ (\nFitCiFourTwoVsFourFourHi) & \nKmFourTwoVsFourFourHi\ (\nKmCiFourTwoVsFourFourHi) & \nFitFourTwoVsFourFourLo\ (\nFitCiFourTwoVsFourFourLo) & \nKmFourTwoVsFourFourLo\ (\nKmCiFourTwoVsFourFourLo) \\
+\arm{8}{2} / \arm{8}{8} & \nFitEightTwoVsEightEightHi\ (\nFitCiEightTwoVsEightEightHi) & \nKmEightTwoVsEightEightHi\ (\nKmCiEightTwoVsEightEightHi) & & \\
+\arm{12}{4} / \arm{12}{12} & \nFitTwelveFourVsTwelveTwelveHi\ (\nFitCiTwelveFourVsTwelveTwelveHi) & \nTwelveKm\ (\nTwelveKmCi) & & \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure}[t]
+\centering
+\input{fig-depth.tex}
+\caption{Median event step against depth and block count, with Kaplan-Meier 95\% intervals. Lines join arms with the same block count, and the solid line joins the untied arms. Each point is one arm with \nNTwoTwoHi\ seeds at depths 2 to 4, \nNEightTwoHi\ at \arm{8}{2} and \arm{8}{8}, \nNTwelveFourHi\ at depth 12, and \nNEightOneHi\ at \arm{8}{1}. Censored runs: \nCensorThreeOne\ of \nNThreeOneHi\ for \arm{3}{1} and \nCensorFourOne\ of \nNFourOneHi\ for \arm{4}{1}, both at lr \nLrHi\ and step \nBudgetFourOneHi, and no other arm shown. The open triangle is \arm{8}{1}, run to step \nBudgetEightOneHi, whose earlier \nEightOneEarlierSeeds\ seeds had \nEightOneEarlierEvents\ events by step \nEightOneEarlierBudget\ and are not merged into it.}
+\label{fig:depth}
+\end{figure}
+
+The design separates tying from depth. The \arm{4}{2} arm has the unique parameters of \arm{2}{2} and the depth of \arm{4}{4}. Against \arm{4}{4} it is \nFitFourTwoVsFourFourHi\ at lr \nLrHi\ and \nFitFourTwoVsFourFourLo\ at lr \nLrLo, and against \arm{2}{2} it is \nFitFourTwoVsTwoTwoHi\ and \nFitFourTwoVsTwoTwoLo. Untied depth is nearly free in steps. Arm \arm{4}{4} against \arm{2}{2} is \nFitFourFourVsTwoTwoHi\ at lr \nLrHi\ and \nFitFourFourVsTwoTwoLo\ at lr \nLrLo, and \arm{8}{8} against \arm{4}{4} is \nFitEightEightVsFourFourHi. Each step costs more, so in floating point operations \arm{8}{8} against \arm{4}{4} is \nFlopEightEightVsFourFourHi.
+
+There is no crossover at these depths. The second plan said a crossover would be claimed only if a looped arm's interval lay wholly below 1, and the lowest bound across the tying contrasts in Table~\ref{tab:tying} is \nLowestTyingBound. Arm \arm{8}{1} is its own case. Its first \nEightOneEarlierSeeds\ seeds had no event by step \nEightOneEarlierBudget, which bounds its ratio against \arm{8}{8} at no less than \nEightOneBound. The third plan then ran \nNEightOneHi\ seeds to step \nBudgetEightOneHi, and \nEvEightOneHi\ of \nNEightOneHi\ fire at a median of step \nMedEightOneHi, a time ratio of \nFitEightOneVsEightEightHi\ (\nFitCiEightOneVsEightEightHi). We keep that arm out of the tying claim, because it shows no prefix signature (Section~\ref{sec:exploratory}).
+
+We did not find this delay reported within our coverage. The closest work finds looped models earlier than a dense model, on other tasks and at greater depth, and we do not claim a contradiction. Kapl et al.~\cite{kapl} find in-context accuracy emerging earlier for looped models than for a 12-layer dense one, on Omniglot-based tasks. Sesodia et al.~\cite{sesodia} report a $4\times8$ looped model reaching the solution sooner than an untied 32-layer model at a lower learning rate (\nSoonerLooped\ training steps against \nSoonerUntied), on depth-bound algorithmic tasks. The task here is copying random repeats, the models have 2 to 12 layers, and the measure is Howe's event.
+
+We did not separate effective step size from structure. A tied block's gradient sums across its passes, Adam rescales each parameter by its running gradient magnitude, and lowering lr from \nLrHi\ to \nLrLo\ slowed looped arms further, \arm{4}{1} from \nMedFourOneHi\ to \nMedFourOneLo. No arm scales lr with pass count. So this is a delay at these depths, learning rates and data, and we do not generalize it to tying slowing learning.
+
+\section{The forecast}
+\label{sec:forecast}
+
+Howe's law puts the anchor at a steady fraction of the time to the event. Figure~\ref{fig:gap} shows the fraction across every arm with events. Across the \nShallowArms\ uniform tiled arms at depths 2 to 4 the median runs from \nGapShallowLow\ to \nGapShallowHigh. The first plan's falsifier was an arm whose median falls outside Howe's envelope, and it fired for \nArmsOutside\ arms just under it: \arm{2}{2} at lr \nLrHi\ (\nGapTwoTwoHi), \arm{3}{3} at lr \nLrHi\ (\nGapThreeThreeHi) and \arm{2}{2} at lr \nLrLo\ (\nGapTwoTwoLo). The tab's own model at \nEvalEvery-step evals reads \nTabGap, just inside.
+
+\begin{figure}[t]
+\centering
+\input{fig-gap.tex}
+\caption{Anchor fraction by arm against Howe's frozen envelope (shaded). Filled markers lie inside the envelope and open markers outside. Seeds per arm: \nHoweSeeds\ for Howe's fleet, 1 for this trainer at config A, \nNTwoTwoHi\ at depths 2 to 4, \nSpacingSeeds\ for the same-seed rerun, \nNEightEightHi\ at \arm{8}{8} and \arm{8}{2}, \nNTwelveFourHi\ at depth 12, \nNEightOneHi\ at \arm{8}{1}, and \nNBiClone\ for each other curriculum. Fractions count only runs where both the event and the anchor fired, so \nCensorThreeOne\ censored runs of \arm{3}{1} and \nCensorFourOne\ of \arm{4}{1} at lr \nLrHi, \nAnchorMissArm\ anchor misses of \arm{3}{3} at lr \nLrLo, and the \nCloneCensored\ censored runs of the clone arm are not in them. Random tokens with the clone rule had no events and do not appear.}
+\label{fig:gap}
+\end{figure}
+
+The second plan predicted that the anchor's distance from chance caused the miss. A flat \nAnchorThreshold\ is \nMultHigh\ times the baseline on Howe's probe and \nMultLow\ times it on ours, so it fires earlier here. The plan ran \arm{2}{2} and \arm{2}{1} at T=\nStudyT\ and T=\nPlanTwoT, seeds \nPlanTwoSeedLow\ to \nPlanTwoSeedHigh, at \nEvalFine-step evals, under the flat anchor and under a rescaled anchor of \nMultHigh\ $b(T)$. It passes only if every arm's median under the rescaled anchor lies inside the envelope. Table~\ref{tab:anchor} shows that \arm{2}{1} at T=\nStudyT\ reads \nAncRescaledSixtyFourOne\ against \nEnvHigh, with an interval of \nAncMissCi, so the prediction failed literally on one arm. At T=\nPlanTwoT\ both arms sit inside under either anchor.
+
+\begin{table}[t]
+\centering
+\small
+\caption{The second plan's anchor test, \nAncRunsSixtyFourTwo\ seeds per arm. The event budget was \nPlanTwoBudget\ steps, and the fractions count seeds that fired. The envelope is \nEnvLow\ to \nEnvHigh.}
+\label{tab:anchor}
+\begin{tabular}{lrrrr}
+\toprule
+Arm & Events & Flat anchor, \nEvalFine-step & Flat anchor, \nEvalEvery-step & Rescaled, \nEvalFine-step \\
+\midrule
+\arm{2}{2}, T=\nStudyT & \nAncEventsSixtyFourTwo & \nAncFineSixtyFourTwo & \nAncCoarseSixtyFourTwo & \nAncRescaledSixtyFourTwo \\
+\arm{2}{1}, T=\nStudyT & \nAncEventsSixtyFourOne & \nAncFineSixtyFourOne & \nAncCoarseSixtyFourOne & \nAncRescaledSixtyFourOne \\
+\arm{2}{2}, T=\nPlanTwoT & \nAncEventsOneTwentyEightTwo & \nAncFineOneTwentyEightTwo & \nAncCoarseOneTwentyEightTwo & \nAncRescaledOneTwentyEightTwo \\
+\arm{2}{1}, T=\nPlanTwoT & \nAncEventsOneTwentyEightOne & \nAncFineOneTwentyEightOne & \nAncCoarseOneTwentyEightOne & \nAncRescaledOneTwentyEightOne \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The same table pointed at eval spacing, since the flat anchor on \arm{2}{2} at T=\nStudyT\ moves from \nAncCoarseSixtyFourTwo\ to \nAncFineSixtyFourTwo\ with finer evals, on other seeds than the study's. The third plan tested this on the study's own seeds. It reran \arm{2}{2} at lr \nLrHi, seeds 1 to \nFineRuns, at \nEvalFine-step evals, continuing past the event. Reading those runs every \nEvalEvery\ steps reproduces the study's event and anchor on \nSpacingSameEvent\ of \nSpacingSeeds\ readable seeds, and \nSpacingStopped\ seeds stopped before the coarse event and are out of the comparison. On those seeds the fraction is \nGapFine\ at \nEvalFine-step evals against \nGapCoarse\ at \nEvalEvery-step, a paired median difference of \nGapDiff, and the share of seeds inside the envelope moves from \nShareCoarse\ to \nShareFine\ percent. So eval spacing explains part of the miss on that arm, and enough to move its median inside. The other two arms were not rerun at \nEvalFine-step evals.
+
+Spacing does not explain what is left. Howe's curriculum on the small model reads \nGapBiClone, \arm{8}{2} reads \nGapEightTwoHi, and the deepest tied arms sit lower, \arm{12}{4} at \nGapTwelveFourHi\ and \arm{8}{1} at \nGapEightOneHi. A \nEvalEvery-step grid moves the fraction of a run the length of \arm{12}{4} by about \nQuantTwelve, so it cannot reach those. The untied deep arms stay inside, \arm{8}{8} at \nGapEightEightHi\ and \arm{12}{12} at \nGapTwelveTwelveHi. The within-arm rank correlation of anchor and event also moves, from \nRhoFourOneHi\ at \arm{4}{1} and lr \nLrHi\ to \nRhoTwoTwoHi\ at \arm{2}{2} and \nRhoTwelveFourHi\ at \arm{12}{4}, against Howe's \nHoweRho\ on the fleet. These gaps stay open. We report them and do not explain them.
+
+\section{Exploratory reads}
+\label{sec:exploratory}
+
+These were not preregistered as tests, and they carry no explanation beyond the measurement.
+
+\paragraph{Copying without the prefix signature.} At \arm{8}{1} every run crosses the event, with a copy advantage of \nEightOneMinCopy\ to \nEightOneMaxCopy\ at that step, and the top prefix score across all heads and layers there reads \nEightOneMinPrefix\ to \nEightOneMaxPrefix. Every other arm in every run file reads at least \nOtherPrefixMin. So that arm copies by a route the prefix score does not see, and the event alone does not show an induction head there. This is \nNEightOneHi\ seeds, and we do not explain it here.
+
+\paragraph{Heads in a one-block model.} In \arm{2}{1} trained for \nHeadSteps\ steps, \nHeadBothMin\ or \nHeadBothMax\ of 4 heads score \nAnchorThreshold\ or above as previous-token heads on pass 0 and as induction heads on pass 1, on all \nHeadSeeds\ seeds. The strongest pass 0 head scores \nHeadPrevMin\ to \nHeadPrevMax, and all four heads score \nHeadPrefixMin\ to \nHeadPrefixMax\ on pass 1. This is an observation on one small model, and we claim nothing new from it. Others have looked at what tied heads do across passes at much larger scale. Kapl et al.~\cite{kapl} (section 4.1) find high prefix-matching heads recurring across the two applications of a shared block. Olszowiec et al.~\cite{olszowiec} (Lens 4) ask whether heads change their job across iterations, report that in looped language models they keep their roles, and note that head multiplexing has been found in looped vision transformers. Wang et al.~\cite{smelt} find the two visits of a repeated block attend to largely the same tokens, a top-8 overlap of \nOverlapRange\% against \nOverlapControl\% for a control. Those models are far larger than this one, and on a first pass here there is nothing beneath a head to match on, so we do not read this as conflicting with them.
+
+\paragraph{Head placement.} In \arm{3}{3} at lr \nLrLo, \nMissCount\ of \nNThreeThreeLo\ runs put the previous-token head in layer 1, with a top score of \nMissLayerOneMin\ to \nMissLayerOneMax\ there and at most \nMissLayerZeroMax\ in layer 0. The anchor watches only layer 0 at that depth, so it never fired on those runs.
+
+\section{Limits}
+\label{sec:limits}
+
+\paragraph{Small models.} The study has width \nStudyD\ and context \nStudyT, and the deepest model is 12 layers. Nothing here transfers by itself to a large model or to natural language data.
+
+\paragraph{The study model is not the tab model.} The tab is d=\nTabD, T=\nTabT, and the arms in Sections~\ref{sec:onset} and~\ref{sec:forecast} are d=\nStudyD, T=\nStudyT. Every number above says which it came from.
+
+\paragraph{Seeds.} Most arms have \nNTwoTwoHi\ seeds, the single-factor arms \nRuleBiCloneN, depth 8 \nNEightTwoHi, depth 12 \nNTwelveFourHi, and \arm{8}{1} and the head read \nNEightOneHi. All \nTabRuns\ seeds fire on the tab's model, which does not rule out a rare stall, and the small model does stall. At width \nStudyD\ and T=\nPlanTwoT, \nStallTwo\ and \nStallOne\ of \nAncRunsOneTwentyEightTwo\ seeds had no event by step \nPlanTwoBudget.
+
+\paragraph{Other GPUs.} Only an M4 Pro and SwiftShader were measured. Safari, Firefox, phones and non-Apple GPUs were not. The \nBenchMedianSeconds\ s comes from a benchmark that holds the page still, and a run a person watches also draws.
+
+\paragraph{Search coverage.} ``Not found'' means not found within the \nSearchCalls\ search calls and direct reads logged in \texttt{research/NOVELTY-2.md}. The two closest demos are low visibility and turned up late, so others may exist.
+
+\paragraph{Effective step size.} Structure and step size are not separated (Section~\ref{sec:onset}).
+
+\paragraph{Eval spacing.} Evals \nEvalEvery\ steps apart are coarse against a \nMainMedian-step onset. Only one arm was rerun at \nEvalFine-step evals on its own seeds, and the comparison leaves out the \nSpacingStopped\ seeds whose fine run ended before the coarse event. Those are seeds whose fine and coarse events are furthest apart, so the leaving out is not random.
+
+\paragraph{Config A is one seed.} Section~\ref{sec:configa} is one draw with a fresh bigram table, and it says nothing about the fleet's spread.
+
+\section{Preregistration and reproducibility}
+\label{sec:prereg}
+
+Three plans were committed to the project's git history before their results were read, on \nDatePlanOne, \nDatePlanTwo\ and \nDatePlanThree. They are the \texttt{research/PREREG*.md} files. None was externally registered. The second and third came before any of their runs. The negatives and about \nPlanOneShare\% of the first plan's lr \nLrHi\ arms had already run, unread, when it was committed, and the plan says what had been seen. Later commits add two labeled arms to the second plan, each before its own runs, and replace gendered pronouns in the first. Two departures from the plans: the third plan's config A stopped at one seed (Section~\ref{sec:configa}), and the second plan's added arm, the tab's model on Howe's curriculum, ran as \texttt{tab-howe-curriculum}.
+
+Every number here regenerates from files in the repository. Each row of a run file carries its config. The one-command reruns are \texttt{npm run study}, \texttt{npm run anchor}, \texttt{npm run compare}, \texttt{npm run compare-tab}, \texttt{npm run parity}, \texttt{npm run bench}, \texttt{npm run breakdown}, \texttt{npm run read-runs} and \texttt{python tools/analyze\_third.py}. \texttt{node tools/runs.mjs list} names every run made on the M4 Pro, and \texttt{node tools/runs.mjs <name>} reruns one, skipping finished seeds. \texttt{paper/numbers.py} recomputes each number in this paper from the result files and fails on a mismatch, and \texttt{paper/numbers.tex}, which the text reads its numbers from, is its output.
+
+\paragraph{What failed or was corrected.} Four things went wrong in ways the plans or the code caught late.
+
+The first plan's falsifier fired, on \nArmsOutside\ arms just under Howe's envelope. We learned that an anchor fraction read at \nEvalEvery-step evals on a run of a few hundred steps carries a grid effect of its own, which led to the later plans.
+
+The second plan's prediction failed. Distance from chance did not explain the first plan's miss, and the rescaled anchor missed on one arm of its own. We kept the plan's literal pass rule, even though the miss was \nAncRescaledSixtyFourOne\ against \nEnvHigh.
+
+A censored fit was silently wrong until an adversarial review of the code. The log-survival term of the likelihood clamped the survival probability at a small floor before taking its log, so the gradient for a censored run far in the tail was zero and those runs stopped pulling on the fit, with no error raised. The first ratios at depths 3 and 4 read \nOldFitThree\ and \nOldFitFour, and the corrected ones read \nFitThreeOneVsThreeThreeHi\ and \nFitFourOneVsFourFourHi. Arms with no censored runs did not move. We now compute that term with a log CDF and print the ratio of Kaplan-Meier medians beside the fit, so the two can be compared wherever runs stall.
+
+A compound contrast was quoted as one effect. The \nCompound\ time ratio was first read as what the curriculum does to onset, and it mixes the repeat rule, the repeat rate and the period range. The third plan split it, and only single-factor contrasts are now credited to a single factor (Table~\ref{tab:factors}). The shape of that result differs from the first reading, since the period range changes direction between rules.
+
+\paragraph{Credits.} Gunner Howe wrote the instruments and the transition's forecast, and Gunner Howe and Vin Howe are different people. Olsson et al.\ described the circuit. Code and result files are in the repository under the MIT license, and the page runs at the address under the title.
+
+\begin{thebibliography}{99}
+\small
+\raggedright
+\setlength{\itemsep}{1pt}
+\setlength{\parsep}{0pt}
+
+\bibitem{howe}
+Gunner Levi Howe.
+\newblock Capability emergence can be forecast: per-seed, in advance, with calibrated intervals, certified false alarms, and a blind pre-registered gate.
+\newblock arXiv:2609.19000, 2026.
+
+\bibitem{olsson}
+Catherine Olsson, Nelson Elhage, Neel Nanda, Nicholas Joseph, Nova DasSarma, Tom Henighan, et al.
+\newblock In-context learning and induction heads.
+\newblock Transformer Circuits Thread, 2022. arXiv:2209.11895.
+
+\bibitem{zucchet}
+Nicolas Zucchet, Francesco d'Angelo, Andrew K. Lampinen, and Stephanie C. Y. Chan.
+\newblock The emergence of sparse attention: impact of data distribution and benefits of repetition.
+\newblock arXiv:2505.17863, 2025.
+
+\bibitem{kapl}
+Ferdinand Kapl, Kaitlin Maile, Stefan Bauer, and Johannes von Oswald.
+\newblock How depth growth and looping shape in-context learning in language models.
+\newblock arXiv:2610.31421, 2026.
+
+\bibitem{sesodia}
+Magnus Sesodia, Juil Sock, Philip Torr, and Christian Schroeder de Witt.
+\newblock Inside the loop: a mechanistic study of weight-tied transformers on depth-bound algorithmic tasks.
+\newblock arXiv:2610.24135, 2026.
+
+\bibitem{olszowiec}
+Pawel Olszowiec, Paulina Tomaszewska, Maciej \.{Z}elaszczyk, Michal Byra, and Neo Christopher Chung.
+\newblock Monitoring latent reasoning in looped language models.
+\newblock arXiv:2610.18127, 2026.
+
+\bibitem{smelt}
+Shaowen Wang, Ge Zhang, Kairong Luo, et al.
+\newblock SMELT: scaling laws for compute-matched MoE looped transformers.
+\newblock arXiv:2609.01343, 2026.
+
+\bibitem{maczan}
+J\k{e}drzej Maczan.
+\newblock Dispatch overhead, not kernel quality: the performance bottleneck in single-stream WebGPU LLM inference.
+\newblock arXiv:2608.08730, 2026.
+
+\bibitem{llm}
+Nicolas Pope and Matti Tedre.
+\newblock Turning language model training from black box into a sandbox.
+\newblock arXiv:2601.21631, 2026. Describes the Little Language Machine.
+
+\bibitem{piston}
+Vin Howe.
+\newblock Sequence Toy and Piston.
+\newblock \url{https://github.com/vinhowe/piston}, \url{https://sequence.toys}.
+
+\bibitem{theorempath}
+TheoremPath.
+\newblock Induction Heads Lab.
+\newblock \url{https://theorempath.com/demo/induction-heads-lab}.
+
+\bibitem{gama}
+pariharshyamu.
+\newblock gama.
+\newblock \url{https://github.com/pariharshyamu/gama}.
+
+\bibitem{tabgpt}
+jbingen.
+\newblock TabGPT.
+\newblock \url{https://github.com/jbingen/tabgpt}.
+
+\bibitem{webgpullm}
+toprakdeviren.
+\newblock webgpu-llm.
+\newblock \url{https://github.com/toprakdeviren/webgpu-llm}.
+
+\bibitem{shaik}
+shaikabdul185-arch.
+\newblock induction-heads-from-scratch.
+\newblock \url{https://github.com/shaikabdul185-arch/induction-heads-from-scratch}.
+
+\bibitem{xander}
+xanderchinxyz.
+\newblock forming-induction-heads.
+\newblock \url{https://github.com/xanderchinxyz/forming-induction-heads}.
+
+\end{thebibliography}
+
+\end{document}
