@@ -1,0 +1,186 @@
+{
+ "curriculum": {
+  "rule, Howe's language, pRep 1, periods [4, 32): clone against tiled": {
+   "ratio": Infinity,
+   "ci": [
+    NaN,
+    NaN
+   ],
+   "bootFinite": 0.00025,
+   "a": {
+    "n": 16,
+    "events": 2,
+    "medianStep": Infinity
+   },
+   "b": {
+    "n": 16,
+    "events": 16,
+    "medianStep": 1025
+   }
+  },
+  "rule, uniform, pRep 0.75, periods [4, 60): tiled against clone": {
+   "ratio": null,
+   "a": {
+    "n": 16,
+    "events": 12,
+    "medianStep": 2275
+   },
+   "b": {
+    "n": 16,
+    "events": 0,
+    "medianStep": null
+   }
+  },
+  "range, uniform tiled, pRep 1: [4, 60) against [4, 32)": {
+   "ratio": 1.7826086956521738,
+   "ci": [
+    1.608695652173913,
+    1.8695652173913044
+   ],
+   "bootFinite": 1.0,
+   "a": {
+    "n": 16,
+    "events": 16,
+    "medianStep": 1025
+   },
+   "b": {
+    "n": 64,
+    "events": 64,
+    "medianStep": 575
+   }
+  },
+  "range, Howe's language clone, pRep 0.75: [4, 32) against [4, 60)": {
+   "ratio": Infinity,
+   "ci": [
+    NaN,
+    NaN
+   ],
+   "bootFinite": 0.0,
+   "a": {
+    "n": 16,
+    "events": 1,
+    "medianStep": Infinity
+   },
+   "b": {
+    "n": 16,
+    "events": 12,
+    "medianStep": 7500
+   }
+  }
+ },
+ "negatives": {
+  "tab-neg-L1": {
+   "n": 8,
+   "events": 0,
+   "medianStep": null,
+   "maxCopyAdv": 0.9133929915371395
+  },
+  "tab-neg-norep": {
+   "n": 8,
+   "events": 0,
+   "medianStep": null,
+   "maxCopyAdv": 0.02860977275977028
+  }
+ },
+ "tab": {
+  "n": 64,
+  "events": 64,
+  "medianStep": 475,
+  "eventRange": [
+   400,
+   700
+  ],
+  "stalled": [],
+  "atEvent": {
+   "firstPassMedian": 5.228721213719202,
+   "secondPassMedian": 3.013089743210003,
+   "advantageMedian": 2.2292783503598046,
+   "shareFromFirstPassMedian": 0.2987998943339896,
+   "chance": 4.564348191467836
+  }
+ },
+ "spacing": {
+  "seeds": 61,
+  "stoppedBeforeTheCoarseEvent": [
+   17,
+   23,
+   51
+  ],
+  "sameEventAsStudy": 61,
+  "sameAnchorAsStudy": 61,
+  "gapEvery5": 0.7475728155339806,
+  "gapEvery25": 0.7272727272727273,
+  "pairedMedianDifference": 0.02510822510822508,
+  "eventEvery5": 540.0,
+  "eventEvery25": 575.0,
+  "inEnvelopeEvery5": 0.639344262295082,
+  "inEnvelopeEvery25": 0.39344262295081966
+ },
+ "depth": {
+  "(12,4) against (12,12)": {
+   "ratio": 1.7419354838709677,
+   "ci": [
+    1.625,
+    1.8666666666666667
+   ],
+   "bootFinite": 1.0,
+   "a": {
+    "n": 16,
+    "events": 16,
+    "medianStep": 1350
+   },
+   "b": {
+    "n": 16,
+    "events": 16,
+    "medianStep": 775
+   }
+  },
+  "(8,1) to 16000": {
+   "n": 4,
+   "events": [
+    6800,
+    8000,
+    8475,
+    6150
+   ],
+   "medianStep": 6800,
+   "finalPrefix": [
+    0.029,
+    0.036,
+    0.027,
+    0.029
+   ],
+   "finalCopyAdv": [
+    2.112,
+    2.026,
+    2.05,
+    2.315
+   ]
+  }
+ },
+ "tabOnHowe": {
+  "n": 8,
+  "events": 0,
+  "medianStep": null,
+  "finalCopyAdv": [
+   0.669,
+   0.093,
+   0.084,
+   0.063,
+   0.097,
+   0.079,
+   0.085,
+   0.082
+  ],
+  "finalPrefix": [
+   0.362,
+   0.022,
+   0.022,
+   0.016,
+   0.018,
+   0.023,
+   0.022,
+   0.016
+  ]
+ }
+}

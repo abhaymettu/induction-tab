@@ -1,12 +1,12 @@
 {
- "seeds": 8,
- "evals": 164,
+ "seeds": 64,
+ "evals": 1336,
  "medianNative": 475.0,
  "medianBrowser": 475.0,
  "pairedMedianDifference": 0.0,
- "sameEventStep": 8,
- "sameAnchorStep": 8,
- "worstCopyAdvDifference": 4.392472051861773e-06,
- "worstLossDifference": 7.152557373046875e-06,
+ "sameEventStep": 64,
+ "sameAnchorStep": 64,
+ "worstCopyAdvDifference": 6.528501768432449e-05,
+ "worstLossDifference": 1.3828277587890625e-05,
  "pass": true
 }
