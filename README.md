@@ -7,10 +7,10 @@ Press Start and watch a transformer learn to copy on your own GPU, then type int
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/hero-dark.webp">
   <source media="(prefers-color-scheme: light)" srcset="docs/hero-light.webp">
-  <img alt="The page after training. The repeated row of random characters is lit, every layer 1 attention map shows a sharp line in its lower half, and a typed abcabc prompt continues itself." src="docs/hero-light.webp">
+  <img alt="The page after training. The repeated row of random characters is lit, every layer 1 attention map shows a sharp line in its lower half, and a typed hello hello hello prompt continues itself." src="docs/hero-light.webp">
 </picture>
 
-<sub>Seed 1 after 3000 steps on an M4 Pro. Another job was using the GPU during this capture, so its clock reads 6.9 s. The benchmark for this seed, with drawing off, is 5.2 s.</sub>
+<sub>Seed 1 after 3000 steps on an M4 Pro. Another training job was running on the same Mac during this capture, so its clock reads 7.8 s in the dark image and 8.3 s in the light one. The benchmark for this seed, with drawing off, is 5.2 s.</sub>
 
 ## What you see
 
@@ -201,7 +201,7 @@ SEEDS=2-30 npm run config-a
 
 ## What did not work
 
-- **Howe's curriculum at this size.** The tab's own model on Howe's language and clone rule fired on 0 of 8 seeds by step 8000, so the tab trains on random repeats. We stopped at 8000, so this does not say it never would. On the study model it does fire, late, at 7500 against 575.
+- **Howe's curriculum at this size.** The tab's own model on Howe's language and clone rule fired on 0 of 8 seeds by step 8000, where the tab's own curriculum fires by step 700 on all 64. We stopped at 8000, so this does not say it never would. On the study model it does fire, late, at 7500 against 575.
 - **"The first we could find."** An early draft claimed this. A second search found TheoremPath's lab and gama, so the claim is gone.
 - **The second plan's explanation of the gap.** Distance from chance did not explain the first plan's miss, and the rescaled anchor missed on one arm of its own.
 

@@ -60,7 +60,7 @@ GPU tools need Google Chrome. `npm run parity` calls `.venv/bin/python` by that 
 - Only `channel: 'chrome'` reaches Metal when headless. Bundled Chromium gets SwiftShader, which runs but says nothing about speed.
 - `configHash` in `src/engine/bench.js` hashes `configs/tab.json` resolved against the defaults in `layout.js`. Changing either one invalidates every row in `records.json`. The same defaults live in `configs/defaults.json` for the Python side, so change them together.
 - Tile 32 in the GEMM kernel is the measured choice. It beat 8 and 16 on Metal, and smaller tiles ran up to 6 times slower. Measure before you change it.
-- Timing measured while something else uses the GPU reads high. The clock in `docs/hero-*.webp` is an example, 6.9 s against 5.2 s clean. Take `bench`, `breakdown`, and record logs on an idle GPU.
+- Timing measured while something else runs on the Mac reads high. The clock in `docs/hero-*.webp` is an example, 7.8 s and 8.3 s against 5.2 s clean. Take `bench`, `breakdown`, and record logs on an idle GPU.
 - The page fetches `results/study-summary.json` and `records.json` at load. Moving either one blanks a section of the page without an error.
 - `dynamics.mjs` and `train.py` append to their output file and skip seeds it already holds. Use a fresh path for a clean rerun.
 - `npm run bench` and `npm run breakdown` print only. Redirect to `results/` by hand so one machine's numbers do not overwrite another's by accident.

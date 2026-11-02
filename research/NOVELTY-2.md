@@ -1,5 +1,7 @@
 # Novelty audit, second pass: induction-tab
 
+Note added later the same day. This file is kept as written. Its tying ratios (1.55, 2.20, 2.83) come from before the censored fit was corrected, and the current ones are 1.55, 2.31, 3.27. It also gives Howe's T as 128, which is the probe length; config A trains at T=256. The README and `research/UPSTREAM-SPEC.md` hold the current figures. The search coverage and prior-work verdicts stand.
+
 Written 2026-11-02 about 02:45 CST by an adversarial reviewer, after the first results. It does not redo `research/NOVELTY.md`. It attacks five new claims and closes that file's residual list. Coverage is 13 search calls (one over the 12 budget, see the search log) plus direct reads of every source quoted below. "Not found" means not found within this coverage, never that the thing does not exist.
 
 **The main result: this pass overturns the recommended wording in `NOVELTY.md` item 1.** "The first we could find" for a tab that trains through the phase change and lets the viewer ablate heads is no longer true. Two existing browser demos train through formation live, and one of them (TheoremPath) also has head ablation. None of the eight named residuals does either.

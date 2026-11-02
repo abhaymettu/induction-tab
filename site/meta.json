@@ -1,0 +1,28 @@
+{
+  "kind": "paper",
+  "title": "induction-tab",
+  "gist": "Open a tab and a small transformer trains from nothing on your own GPU until it learns to copy what it has just seen, the transition known as induction. It runs in hand-written WGSL with nothing to install, and afterward you can type at the model and silence the heads doing the copying.",
+  "summary": "Lets you watch induction heads form in a small transformer in your own browser, then type at the model and silence its heads, with nothing to install.",
+  "repo": "https://github.com/abhaymettu/induction-tab",
+  "paper_pdf": "paper/induction-tab.pdf",
+  "hero_image": {
+    "light": "docs/hero-live-light.png",
+    "alt": "The live page after a finished run. A random row of characters sits above its exact repeat, lit in blue where the model predicts it. A typed hello hello hello prompt carries on by itself, two layer 0 heads and all four layer 1 heads draw a sharp line in their attention maps, and a chart shows copy advantage rising past the 2-nat event."
+  },
+  "links": [
+    {"label": "Run it", "href": "https://abhaymettu.github.io/induction-tab/"}
+  ],
+  "headline_numbers": [
+    {"label": "median seconds to the event on an M4 Pro with drawing off, seeds 1 to 5", "value": "4.9 s", "command": "npm run bench"},
+    {"label": "seeds reaching the same event and anchor step in WGSL and in PyTorch, tab's model", "value": "64 of 64", "command": "npm run compare-tab"},
+    {"label": "repeat rule changed alone on Howe's language, tiled against clone by step 8000", "value": "16 of 16 against 2 of 16", "command": ".venv/bin/python tools/analyze_third.py"},
+    {"label": "tying delay as a time ratio at depths 2, 3 and 4, lr 3e-3, censored log-normal fit", "value": "1.55, 2.31, 3.27", "command": "npm run study"}
+  ],
+  "site": {
+    "eyebrow": "Hand-written WGSL trainer · study arms of up to 64 seeds · MIT",
+    "blurb": "A small transformer trains through the induction transition in a browser tab, on your own GPU, in hand-written WGSL, and then you can type at it and silence its heads. In a seeds study on a smaller model, the repeat rule was the largest single-factor contrast I could bound in steps, and tying weights delayed the event at depths 2 to 4 at both learning rates I tested. A rescaled threshold I preregistered failed on one arm, 0.903 against 0.901.",
+    "paper_title": "Induction heads in a browser tab: a hand-written WebGPU trainer, and what the repeat rule and weight tying do to onset",
+    "field": "ml",
+    "group": "ml"
+  }
+}
