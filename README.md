@@ -2,7 +2,7 @@
 
 Press Start and watch a transformer learn to copy on your own GPU, then type into it and silence its heads. On an M4 Pro the benchmark reaches the event in a median of 4.9 s with drawing off. With drawing on we only have readings beside another GPU job, 5.8 s at the least loaded ([details](#what-you-see)).
 
-**[abhaymettu.github.io/induction-tab](https://abhaymettu.github.io/induction-tab/)** to run it, [the write-up](https://abhaymettu.com/research/induction-tab/) to read about it.
+**[abhaymettu.github.io/induction-tab](https://abhaymettu.github.io/induction-tab/)** to run it, [the write-up](https://abhaymettu.com/research/induction-tab/) to read about it, [the paper](https://doi.org/10.5281/zenodo.23899100) for the method and every number.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/hero-dark.webp">
@@ -220,4 +220,12 @@ Other browser demos train induction heads live, including TheoremPath's lab and 
 - [Little Language Machine](https://arxiv.org/abs/2601.21631) trains a small transformer client-side.
 - [shaikabdul185-arch](https://github.com/shaikabdul185-arch/induction-heads-from-scratch) and [xanderchinxyz](https://github.com/xanderchinxyz/forming-induction-heads) did earlier hobby work on random repeats.
 
-MIT, see [LICENSE](LICENSE). `research/upstream/emergence_watch` keeps its own license. IBM Plex Mono in `assets/fonts` is under the SIL Open Font License, see [`assets/fonts/LICENSE.txt`](assets/fonts/LICENSE.txt).
+## Cite
+
+Mettu, A. (2026). Induction heads in a browser tab: a hand-written WebGPU trainer, and what the repeat rule and weight tying do to onset. Zenodo. https://doi.org/10.5281/zenodo.23899100
+
+That DOI is version 1, and https://doi.org/10.5281/zenodo.23899099 always resolves to the latest version. The same PDF is at [`paper/induction-tab.pdf`](paper/induction-tab.pdf).
+
+## License
+
+The paper on Zenodo is under CC BY 4.0. The code is MIT, see [LICENSE](LICENSE). `research/upstream/emergence_watch` keeps its own license. IBM Plex Mono in `assets/fonts` is under the SIL Open Font License, see [`assets/fonts/LICENSE.txt`](assets/fonts/LICENSE.txt).

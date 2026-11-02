@@ -10,7 +10,8 @@
     "alt": "The live page after a finished run. A random row of characters sits above its exact repeat, lit in blue where the model predicts it. A typed hello hello hello prompt carries on by itself, two layer 0 heads and all four layer 1 heads draw a sharp line in their attention maps, and a chart shows copy advantage rising past the 2-nat event."
   },
   "links": [
-    {"label": "Run it", "href": "https://abhaymettu.github.io/induction-tab/"}
+    {"label": "Run it", "href": "https://abhaymettu.github.io/induction-tab/"},
+    {"label": "DOI", "href": "https://doi.org/10.5281/zenodo.23899100"}
   ],
   "headline_numbers": [
     {"label": "median seconds to the event on an M4 Pro with drawing off, seeds 1 to 5", "value": "4.9 s", "command": "npm run bench"},

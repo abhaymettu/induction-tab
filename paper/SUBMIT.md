@@ -1,13 +1,15 @@
-# Submitting the paper
+# Where the paper is
 
-Nothing has been submitted, and no account was created for this paper. Everything below is for the author to do. The arXiv and Zenodo details come from their help pages as read on 2026-11-02, so check the live pages before relying on them.
+The paper is on Zenodo at https://doi.org/10.5281/zenodo.23899100, version 1, published 2026-11-02 under CC BY 4.0. The deposited file is `paper/induction-tab.pdf` at md5 `2251485b8bc84e93dc6efc2036ce551b`. https://doi.org/10.5281/zenodo.23899099 always resolves to the latest version, and a changed PDF goes up as a new version of that record.
+
+The rest of this file is what an arXiv submission would need. Those details come from arXiv's help pages as read on 2026-11-02, so check the live pages before relying on them.
 
 ## Decisions for a person
 
 1. **Whether to submit.** An announced arXiv paper is part of the permanent scholarly record, and arXiv only considers removal if the submitter had no legal right to agree to the license.
 2. **Reporting tool use.** arXiv's moderation page requires authors to report any significant use of sophisticated tools, and it names text-to-text generative AI among them. The paper has no such statement now. If generative AI tools were used for the code, analysis or text, the author decides the wording and adds it, for example to the Credits paragraph. By signing, the author takes full responsibility for all of the contents, however they were generated.
 3. **The endorser.** See the next section.
-4. **The license.** arXiv calls the chosen license irrevocable, though different versions of a paper can have different licenses. The MIT license on the repository covers the code and does not choose a license for the arXiv version.
+4. **The license.** arXiv calls the chosen license irrevocable, though different versions of a paper can have different licenses. The MIT license on the repository covers the code, and CC BY 4.0 covers the Zenodo record. Neither chooses a license for the arXiv version.
 5. **The category.** The suggestion is cs.LG as primary. Any cross-list is the author's call, and moderators may reclassify.
 
 ## What arXiv needs
@@ -48,13 +50,3 @@ The form asks for the title, the authors and the abstract as text. Copy the abst
 - Both links under the title must resolve, because the paper says the code and result files are in that repository and the page runs at that address.
 - Run `python3 paper/numbers.py`, and rebuild if it reports anything.
 - Expect moderation before the paper is public. arXiv reserves the right to reclassify or decline any submission.
-
-## Zenodo as the alternative
-
-Zenodo needs no endorsement. Anyone may register as a user and deposit content they have the rights to, in all fields of research, and a deposit can have a DOI, which Zenodo lets you reserve to print in the files before publishing. It needs its own account, and none was created here. There is a test environment at `https://sandbox.zenodo.org`.
-
-The author still chooses the license and whether to publish, and the reporting question above still deserves an answer in the paper. Zenodo does not put a paper in front of arXiv's readers, so it gives a citable record and less reach.
-
-Description for a deposit, kept short because the PDF carries the numbers:
-
-> A small transformer trains through the induction transition in a browser tab, on the reader's GPU, in hand-written WGSL, and reaches the same event step as PyTorch on 64 of 64 seeds. A seeds study on small models finds the repeat rule to be the largest single-factor contrast in steps, and finds that tying weights delays the event at depths 2 to 4 at two learning rates. It claims no mechanism, does not separate effective step size, and reports one preregistered prediction that failed on one arm. Code, logs and the command behind every number are in the repository.
