@@ -159,7 +159,7 @@ GPU commands need Google Chrome installed. `bench`, `breakdown`, `parity`, `veri
 | Any run on this list, by name | | `node tools/runs.mjs <name>`, and `node tools/runs.mjs list` shows them | `results/<name>.jsonl` |
 | Nothing leaves the page's host | every request same host | `node tools/verify-network.mjs` | printed |
 | Anchor misses at (3,3) | 8 of 64 | `npm run read-runs` | printed, from `results/study-lr1e-3.jsonl` |
-| Record row | 4.90 s | `npm run verify-record -- records/m4pro-chrome.json` | `records.json` |
+| Record row | 4.90 s, drawing off | `npm run verify-record -- records/m4pro-chrome.json` | `records.json` |
 | Figures | | `npm run figures` | `docs/*.svg` |
 
 The stored runs came from these commands. Each row of a run file carries its config, and both trainers skip seeds their output file already holds.
