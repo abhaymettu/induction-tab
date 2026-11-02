@@ -11,6 +11,7 @@ import { STREAM } from './prng.js';
 const SLOT = 256;
 const STORAGE = 0x80 | 0x04 | 0x08; // STORAGE | COPY_SRC | COPY_DST
 const HIST_CAP = 1 << 16;
+const NO_PARAM = 0xffffffff;
 
 export async function getDevice() {
   if (!navigator.gpu) throw new Error('no-webgpu');
@@ -110,8 +111,10 @@ function buildNet(g, ctx, { B, T, tok, withGrad, phase = 'fwd' }) {
     if (!c.ln) return { out: input };
     const out = buf(N * d);
     const stats = buf(N * 2);
-    g.op(phase, 'LN_FWD', [N, d, by[gName].off, by[bName].off], [P, input, out, stats], groups(N));
-    return { out, stats, gName, bName, input };
+    const gOff = c.lnAffine ? by[gName].off : NO_PARAM;
+    const bOff = c.lnAffine ? by[bName].off : NO_PARAM;
+    g.op(phase, 'LN_FWD', [N, d, gOff, bOff], [P, input, out, stats], groups(N));
+    return { out, stats, gOff, bOff };
   };
 
   g.op(phase, 'EMBED_FWD', [N, T, d, by.wte.off, by.wpe.off], [P, tok, X[0]], groups(N));
@@ -164,8 +167,8 @@ function buildNet(g, ctx, { B, T, tok, withGrad, phase = 'fwd' }) {
   // Pull dNorm through a LayerNorm (or straight) into the residual stream.
   const intoStream = (n, xBuf) => {
     if (c.ln) {
-      g.op(bwd, 'LN_BWD_P', [N, d, by[n.gName].off, by[n.bName].off], [G, xBuf, dNorm, n.stats], groups(d));
-      g.op(bwd, 'LN_BWD_X', [N, d, by[n.gName].off, started ? 1 : 0], [P, xBuf, dNorm, n.stats, dStream], groups(N));
+      if (c.lnAffine) g.op(bwd, 'LN_BWD_P', [N, d, n.gOff, n.bOff], [G, xBuf, dNorm, n.stats], groups(d));
+      g.op(bwd, 'LN_BWD_X', [N, d, n.gOff, started ? 1 : 0], [P, xBuf, dNorm, n.stats, dStream], groups(N));
     } else {
       g.op(bwd, 'ADD', [N * d, started ? 1 : 0], [dNorm, dStream], groups(N * d));
     }
@@ -206,7 +209,7 @@ function buildNet(g, ctx, { B, T, tok, withGrad, phase = 'fwd' }) {
   return { layers, logits, lossBuf, N, B, T, forwardEnd };
 }
 
-const KERNELS = ['GEMM', 'TOKEN_INDEX', 'EMBED_FWD', 'EMBED_BWD', 'SOFTMAX_FWD', 'SOFTMAX_BWD', 'LN_FWD', 'LN_BWD_X', 'LN_BWD_P', 'GELU_FWD', 'GELU_BWD', 'XENT', 'LOSS_REDUCE', 'ADD', 'DATA', 'PROBE_SCORE', 'PROBE_CE', 'ADAMW', 'TICK'];
+const KERNELS = ['GEMM', 'TOKEN_INDEX', 'EMBED_FWD', 'EMBED_BWD', 'SOFTMAX_FWD', 'SOFTMAX_BWD', 'LN_FWD', 'LN_BWD_X', 'LN_BWD_P', 'GELU_FWD', 'GELU_BWD', 'XENT', 'LOSS_REDUCE', 'ADD', 'DATA', 'PROBE_SCORE', 'PROBE_CE', 'PROBE_VIEW', 'ADAMW', 'TICK'];
 
 export async function createTrainer(device, cfg) {
   const c = resolve(cfg);
@@ -247,7 +250,7 @@ export async function createTrainer(device, cfg) {
   train.op('tick', 'TICK', [1], [state], 1);
   train.op('loss', 'LOSS_REDUCE', [net.N, c.T, HIST_CAP], [net.lossBuf, hist, state], 1);
   const adamFields = [lay.total, c.warmup, 0, 0, { f: c.lr }, { f: c.b1 }, { f: c.b2 }, { f: c.eps }, { f: c.wd }];
-  const adamIndex = train.op('opt', 'ADAMW', adamFields, [P, G, M, Vv, state], groups(lay.total));
+  train.op('opt', 'ADAMW', adamFields, [P, G, M, Vv, state], groups(lay.total));
   train.finalize();
 
   // Copy probe on fixed tokens, with attention kept for the instruments and the live view.
@@ -263,7 +266,18 @@ export async function createTrainer(device, cfg) {
     probe.op('probe', 'PROBE_SCORE', [pBk, pT, c.H, l * c.H * 2], [y.S, probeOut], c.H);
   });
   probe.op('probe', 'PROBE_CE', [pBk, pT, nScores], [probeNet.lossBuf, probeOut], groups(pT));
+  const view = buf(c.L * c.H * pT * pT);
+  probeNet.layers.forEach((y, l) => {
+    probe.op('probe', 'PROBE_VIEW', [pBk, pT, c.H, l * c.H * pT * pT], [y.S, view], Math.ceil((c.H * pT * pT) / 16));
+  });
   probe.finalize();
+
+  // One sequence, forward only, for whatever the reader types. Unused positions hold token 0; attention is
+  // causal, so they cannot reach the position being read.
+  const steer = new Graph(device, pipelines);
+  const steerTok = buf(c.T);
+  const steerNet = buildNet(steer, ctx, { B: 1, T: c.T, tok: steerTok, withGrad: false, phase: 'steer' });
+  steer.finalize();
 
   const readback = async (buffer, size = buffer.size) => {
     const staging = device.createBuffer({ size, usage: 0x01 | 0x08 }); // MAP_READ | COPY_DST
@@ -288,6 +302,33 @@ export async function createTrainer(device, cfg) {
     train.setField(dataIndex, 4, seed);
   };
 
+  // Bit h of masks[l] silences head h of layer l in the probe and the prompt, never in training.
+  const setAblation = (masks) => {
+    masks.forEach((mask, l) => {
+      probe.setField(probeNet.layers[l].softmax, 3, mask);
+      steer.setField(steerNet.layers[l].softmax, 3, mask);
+    });
+  };
+
+  // Logits for the token after `tokens`, plus each head's attention from the last position when asked.
+  const predict = async (tokens) => {
+    const ids = new Uint32Array(c.T);
+    const n = Math.min(tokens.length, c.T);
+    ids.set(tokens.slice(-n));
+    device.queue.writeBuffer(steerTok, 0, ids);
+    const enc = device.createCommandEncoder();
+    const pass = enc.beginComputePass();
+    steer.encode(pass);
+    pass.end();
+    const staging = device.createBuffer({ size: c.V * 4, usage: 0x01 | 0x08 });
+    enc.copyBufferToBuffer(steerNet.logits, (n - 1) * c.V * 4, staging, 0, c.V * 4);
+    device.queue.submit([enc.finish()]);
+    await staging.mapAsync(1);
+    const logits = new Float32Array(staging.getMappedRange().slice(0));
+    staging.destroy();
+    return logits;
+  };
+
   const opsFor = (phases) => train.ops.filter((o) => phases.includes(o.phase));
 
   // Replays `n` steps into one compute pass. The optional probe runs after the last of them.
@@ -306,22 +347,26 @@ export async function createTrainer(device, cfg) {
       for (let h = 0; h < c.H; h++) heads.push({ prev: f[(l * c.H + h) * 2], prefix: f[(l * c.H + h) * 2 + 1] });
       scores.push(heads);
     }
-    const ce = f.subarray(nScores);
+    const ce = f.subarray(nScores, nScores + pT);
     const half = pT / 2;
     let first = 0;
     let second = 0;
     for (let q = 0; q < half - 1; q++) first += ce[q];
     for (let q = half - 1; q < pT - 1; q++) second += ce[q];
-    return { scores, ce: Array.from(ce), copyAdv: first / (half - 1) - second / half };
+    // Appended by the training loop when present: the first probe sequence's per-position loss, then train loss.
+    const seqLoss = f.length > nScores + pT ? f.subarray(nScores + pT, nScores + 2 * pT) : null;
+    const trainLoss = f.length > nScores + pT ? f[nScores + 2 * pT] : null;
+    return { scores, ce: Array.from(ce), copyAdv: first / (half - 1) - second / half, seqLoss, trainLoss };
   };
 
   const destroy = () => {
     owned.forEach((b) => b.destroy());
     train.ubuf.destroy();
     probe.ubuf.destroy();
+    steer.ubuf.destroy();
   };
 
   return {
-    c, lay, P, G, M, Vv, state, hist, tok, train, probe, net, probeNet, probeOut, probeTok, adamIndex, readback, reset, opsFor, encodeSteps, parseProbe, destroy, zero,
+    c, lay, P, G, M, Vv, state, hist, tok, train, probe, net, probeNet, probeOut, probeTok, view, readback, reset, opsFor, encodeSteps, parseProbe, destroy, setAblation, predict,
   };
 }

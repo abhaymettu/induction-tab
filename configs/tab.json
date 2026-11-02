@@ -1,0 +1,4 @@
+{
+  "V": 96, "T": 128, "d": 128, "H": 4, "L": 2, "unique": 2, "B": 16, "mlp": 4, "ln": true, "lnAffine": false,
+  "lr": 0.003, "uniform": true, "tile": true, "pRep": 1, "rMin": 4, "rMax": 64, "probeB": 16, "probeT": 128
+}

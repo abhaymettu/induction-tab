@@ -19,10 +19,11 @@ class Flat:
         return {s["name"]: p[s["off"]:s["off"] + s["size"]].view(*s["shape"]) for s in self.lay["specs"]}
 
 
-def layer_norm(x, g, b):
+def layer_norm(x, w, g, b):
     mean = x.mean(-1, keepdim=True)
     var = ((x - mean) ** 2).mean(-1, keepdim=True)
-    return (x - mean) * (var + 1e-5).pow(-0.5) * g + b
+    y = (x - mean) * (var + 1e-5).pow(-0.5)
+    return y * w[g] + w[b] if g in w else y
 
 
 def forward(c, w, tok, ablate=None, keep_attn=False):
@@ -33,7 +34,7 @@ def forward(c, w, tok, ablate=None, keep_attn=False):
     attn = []
     for l in range(c["L"]):
         p = f"b{l % c['unique']}."
-        n = layer_norm(x, w[p + "ln1g"], w[p + "ln1b"]) if c["ln"] else x
+        n = layer_norm(x, w, p + "ln1g", p + "ln1b") if c["ln"] else x
         q, k, v = (n @ w[p + "wqkv"]).chunk(3, -1)
         q = q.view(B, T, H, dh).transpose(1, 2)
         k = k.view(B, T, H, dh).transpose(1, 2)
@@ -45,10 +46,10 @@ def forward(c, w, tok, ablate=None, keep_attn=False):
         o = (a @ v).transpose(1, 2).reshape(B, T, d)
         x = x + o @ w[p + "wo"]
         if c["mlp"]:
-            n = layer_norm(x, w[p + "ln2g"], w[p + "ln2b"]) if c["ln"] else x
+            n = layer_norm(x, w, p + "ln2g", p + "ln2b") if c["ln"] else x
             x = x + F.gelu(n @ w[p + "w1"] + w[p + "b1"]) @ w[p + "w2"] + w[p + "b2"]
     if c["ln"]:
-        x = layer_norm(x, w["lnfg"], w["lnfb"])
+        x = layer_norm(x, w, "lnfg", "lnfb")
     return x @ w["wu"], attn
 
 

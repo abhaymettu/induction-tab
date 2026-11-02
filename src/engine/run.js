@@ -27,7 +27,8 @@ export function onsetTracker(c) {
 // with the probe and its readback in the same submit. Eval steps are 0, E, 2E, ... counting from zero.
 export async function trainLoop(device, t, { budget, chunkSteps, onEval, onChunk, shouldStop }) {
   const E = t.c.evalEvery;
-  const staging = device.createBuffer({ size: t.probeOut.size, usage: 0x01 | 0x08 });
+  const seqBytes = t.c.probeT * 4;
+  const staging = device.createBuffer({ size: t.probeOut.size + seqBytes + 4, usage: 0x01 | 0x08 });
   const t0 = performance.now();
   const tracker = onsetTracker(t.c);
   let done = 0; // steps completed; the eval for step s runs after s + 1 steps
@@ -36,7 +37,11 @@ export async function trainLoop(device, t, { budget, chunkSteps, onEval, onChunk
     const evalDue = (done + n - 1) % E === 0;
     const enc = device.createCommandEncoder();
     t.encodeSteps(enc, n, evalDue);
-    if (evalDue) enc.copyBufferToBuffer(t.probeOut, 0, staging, 0, t.probeOut.size);
+    if (evalDue) {
+      enc.copyBufferToBuffer(t.probeOut, 0, staging, 0, t.probeOut.size);
+      enc.copyBufferToBuffer(t.probeNet.lossBuf, 0, staging, t.probeOut.size, seqBytes);
+      enc.copyBufferToBuffer(t.hist, (done + n - 1) * 4, staging, t.probeOut.size + seqBytes, 4);
+    }
     device.queue.submit([enc.finish()]);
     done += n;
     if (evalDue) {

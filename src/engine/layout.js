@@ -4,7 +4,7 @@
 // MLP, no attention biases, PyTorch default init, AdamW (0.9, 0.95) with decay on every parameter.
 
 export const DEFAULTS = {
-  V: 512, T: 128, d: 128, H: 4, L: 2, unique: 2, mlp: 4, ln: true,
+  V: 512, T: 128, d: 128, H: 4, L: 2, unique: 2, mlp: 4, ln: true, lnAffine: true,
   B: 32, lr: 1e-3, b1: 0.9, b2: 0.95, eps: 1e-8, wd: 0.01, warmup: 100,
   pRep: 0.75, uniform: false, tile: false, langSeed: 777, seed: 1, steps: 16000, evalEvery: 25, probeB: 64, probeT: 128,
 };
@@ -31,18 +31,18 @@ export function paramSpecs(cfg) {
   add('wpe', [c.T, c.d], 'normal');
   for (let u = 0; u < c.unique; u++) {
     const p = `b${u}.`;
-    if (c.ln) { add(p + 'ln1g', [c.d], 'one'); add(p + 'ln1b', [c.d], 'zero'); }
+    if (c.ln && c.lnAffine) { add(p + 'ln1g', [c.d], 'one'); add(p + 'ln1b', [c.d], 'zero'); }
     add(p + 'wqkv', [c.d, 3 * c.d], 'kaiming', c.d);
     add(p + 'wo', [c.d, c.d], 'kaiming', c.d);
     if (c.mlp) {
-      if (c.ln) { add(p + 'ln2g', [c.d], 'one'); add(p + 'ln2b', [c.d], 'zero'); }
+      if (c.ln && c.lnAffine) { add(p + 'ln2g', [c.d], 'one'); add(p + 'ln2b', [c.d], 'zero'); }
       add(p + 'w1', [c.d, c.f], 'kaiming', c.d);
       add(p + 'b1', [c.f], 'kaiming', c.d);
       add(p + 'w2', [c.f, c.d], 'kaiming', c.f);
       add(p + 'b2', [c.d], 'kaiming', c.f);
     }
   }
-  if (c.ln) { add('lnfg', [c.d], 'one'); add('lnfb', [c.d], 'zero'); }
+  if (c.ln && c.lnAffine) { add('lnfg', [c.d], 'one'); add('lnfb', [c.d], 'zero'); }
   add('wu', [c.d, c.V], 'kaiming', c.d);
   let off = 0;
   return s.map((x) => {

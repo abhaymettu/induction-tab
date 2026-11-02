@@ -28,18 +28,18 @@ def param_specs(cfg):
     d, f = c["d"], c["f"]
     for u in range(c["unique"]):
         p = f"b{u}."
-        if c["ln"]:
+        if c["ln"] and c["lnAffine"]:
             add(p + "ln1g", [d], "one"); add(p + "ln1b", [d], "zero")
         add(p + "wqkv", [d, 3 * d], "kaiming", d)
         add(p + "wo", [d, d], "kaiming", d)
         if c["mlp"]:
-            if c["ln"]:
+            if c["ln"] and c["lnAffine"]:
                 add(p + "ln2g", [d], "one"); add(p + "ln2b", [d], "zero")
             add(p + "w1", [d, f], "kaiming", d)
             add(p + "b1", [f], "kaiming", d)
             add(p + "w2", [f, d], "kaiming", f)
             add(p + "b2", [d], "kaiming", f)
-    if c["ln"]:
+    if c["ln"] and c["lnAffine"]:
         add("lnfg", [d], "one"); add("lnfb", [d], "zero")
     add("wu", [d, c["V"]], "kaiming", d)
     off = 0

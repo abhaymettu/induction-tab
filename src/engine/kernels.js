@@ -110,7 +110,8 @@ fn main(@builtin(workgroup_id) wg: vec3<u32>, @builtin(local_invocation_id) lid:
 export const GEMM = gemm(32);
 
 const U32_UNIFORM = (fields) => `struct U { ${fields.map((f) => `${f}: u32`).join(', ')} };
-@group(0) @binding(0) var<uniform> u: U;`;
+@group(0) @binding(0) var<uniform> u: U;
+const NO_PARAM = 0xffffffffu;`;
 
 // x[n, c] = wte[tok[n], c] + wpe[n % T, c]
 export const EMBED_FWD = /* wgsl */ `
@@ -239,8 +240,12 @@ fn main(@builtin(global_invocation_id) id: vec3<u32>) {
   for (var c = 0u; c < u.d; c++) { let t = X[base + c] - mean; vr += t * t; }
   vr /= f32(u.d);
   let rstd = inverseSqrt(vr + 1e-5);
-  for (var c = 0u; c < u.d; c++) {
-    Y[base + c] = (X[base + c] - mean) * rstd * P[u.gOff + c] + P[u.bOff + c];
+  if (u.gOff == NO_PARAM) {
+    for (var c = 0u; c < u.d; c++) { Y[base + c] = (X[base + c] - mean) * rstd; }
+  } else {
+    for (var c = 0u; c < u.d; c++) {
+      Y[base + c] = (X[base + c] - mean) * rstd * P[u.gOff + c] + P[u.bOff + c];
+    }
   }
   stats[2u * r] = mean;
   stats[2u * r + 1u] = rstd;
@@ -256,6 +261,7 @@ ${U32_UNIFORM(['rows', 'd', 'gOff', 'acc'])}
 @group(0) @binding(3) var<storage, read> dY: array<f32>;
 @group(0) @binding(4) var<storage, read> stats: array<f32>;
 @group(0) @binding(5) var<storage, read_write> dX: array<f32>;
+fn gain(c: u32) -> f32 { return select(P[u.gOff + c], 1.0, u.gOff == NO_PARAM); }
 @compute @workgroup_size(${WG})
 fn main(@builtin(global_invocation_id) id: vec3<u32>) {
   let r = id.x;
@@ -266,7 +272,7 @@ fn main(@builtin(global_invocation_id) id: vec3<u32>) {
   var m1 = 0.0;
   var m2 = 0.0;
   for (var c = 0u; c < u.d; c++) {
-    let dyg = dY[base + c] * P[u.gOff + c];
+    let dyg = dY[base + c] * gain(c);
     m1 += dyg;
     m2 += dyg * (X[base + c] - mean) * rstd;
   }
@@ -274,7 +280,7 @@ fn main(@builtin(global_invocation_id) id: vec3<u32>) {
   m2 /= f32(u.d);
   for (var c = 0u; c < u.d; c++) {
     let xh = (X[base + c] - mean) * rstd;
-    var v = rstd * (dY[base + c] * P[u.gOff + c] - m1 - xh * m2);
+    var v = rstd * (dY[base + c] * gain(c) - m1 - xh * m2);
     if (u.acc == 1u) { v += dX[base + c]; }
     dX[base + c] = v;
   }
@@ -482,6 +488,22 @@ fn main(@builtin(global_invocation_id) id: vec3<u32>) {
   }
   out[u.outOff + 2u * h] = prev / f32(u.B * (u.T - 1u));
   out[u.outOff + 2u * h + 1u] = pre / f32(u.B * (L - 1u));
+}
+`;
+
+// V[l, h, q, k] = attention averaged over the probe batch: the picture the page draws.
+export const PROBE_VIEW = /* wgsl */ `
+${U32_UNIFORM(['B', 'T', 'H', 'off'])}
+@group(0) @binding(1) var<storage, read> S: array<f32>;
+@group(0) @binding(2) var<storage, read_write> V: array<f32>;
+@compute @workgroup_size(16)
+fn main(@builtin(global_invocation_id) id: vec3<u32>) {
+  let i = id.x;
+  let n = u.H * u.T * u.T;
+  if (i >= n) { return; }
+  var s = 0.0;
+  for (var b = 0u; b < u.B; b++) { s += S[b * n + i]; }
+  V[u.off + i] = s / f32(u.B);
 }
 `;
 
