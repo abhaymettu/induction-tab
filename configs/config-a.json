@@ -1,0 +1,4 @@
+{
+  "V": 2048, "T": 256, "d": 256, "H": 4, "L": 2, "unique": 2, "B": 64, "mlp": 4, "ln": true, "lnAffine": true,
+  "lr": 0.001, "uniform": false, "tile": false, "pRep": 0.75, "probeB": 64, "probeT": 128
+}

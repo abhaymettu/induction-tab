@@ -1,0 +1,88 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 880 372" width="880" height="372" role="img" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace">
+<title>Median step of the event, by depth and blocks</title>
+<desc>Median event step for tied and untied models at depths 2, 3, 4 and 8, at two learning rates, from results/study-summary.json.</desc>
+<rect width="880" height="372" fill="#ffffff"/>
+<text x="0" y="18" fill="#13161c" font-size="14" font-weight="600" text-anchor="start">Median step of the event, by depth and blocks</text>
+<text x="0" y="38" fill="#55585f" font-size="12" font-weight="400" text-anchor="start">Study model. Untied means every layer has its own block. Bars are 95% intervals. Both axes are logarithmic.</text>
+<text x="48" y="76" fill="#13161c" font-size="13" font-weight="600" text-anchor="start">lr 3e-3</text>
+<line x1="48" x2="440" y1="330.1" y2="330.1" stroke="#d8dee4"/>
+<text x="40" y="334.1" fill="#55585f" font-size="11" font-weight="400" text-anchor="end">500</text>
+<line x1="48" x2="440" y1="264.8" y2="264.8" stroke="#d8dee4"/>
+<text x="40" y="268.8" fill="#55585f" font-size="11" font-weight="400" text-anchor="end">1000</text>
+<line x1="48" x2="440" y1="199.5" y2="199.5" stroke="#d8dee4"/>
+<text x="40" y="203.5" fill="#55585f" font-size="11" font-weight="400" text-anchor="end">2000</text>
+<line x1="48" x2="440" y1="134.2" y2="134.2" stroke="#d8dee4"/>
+<text x="40" y="138.2" fill="#55585f" font-size="11" font-weight="400" text-anchor="end">4000</text>
+<text x="64" y="360" fill="#55585f" font-size="11" font-weight="400" text-anchor="middle">2 layers</text>
+<text x="171" y="360" fill="#55585f" font-size="11" font-weight="400" text-anchor="middle">3</text>
+<text x="247" y="360" fill="#55585f" font-size="11" font-weight="400" text-anchor="middle">4</text>
+<text x="430" y="360" fill="#55585f" font-size="11" font-weight="400" text-anchor="middle">8</text>
+<polyline points="64,277.4 171,240.1 247,208.1" fill="none" stroke="#5a5d63" stroke-width="2" stroke-dasharray="2 3"/>
+<line x1="247" y1="208.1" x2="430" y2="134.2" stroke="#5a5d63" stroke-width="2" stroke-dasharray="2 3"/>
+<path d="M430 126.2 L436 137.2 L424 137.2 Z" fill="#5a5d63" stroke="#ffffff" stroke-width="2"/>
+<line x1="64" x2="64" y1="277.4" y2="274.7" stroke="#5a5d63" stroke-width="1.5"/>
+<path d="M64 270.9 L70.5 277.4 L64 283.9 L57.5 277.4 Z" fill="#5a5d63" stroke="#ffffff" stroke-width="2"/>
+<line x1="171" x2="171" y1="245.7" y2="238.3" stroke="#5a5d63" stroke-width="1.5"/>
+<path d="M171 233.6 L177.5 240.1 L171 246.6 L164.5 240.1 Z" fill="#5a5d63" stroke="#ffffff" stroke-width="2"/>
+<line x1="247" x2="247" y1="212.1" y2="203.1" stroke="#5a5d63" stroke-width="1.5"/>
+<path d="M247 201.6 L253.5 208.1 L247 214.6 L240.5 208.1 Z" fill="#5a5d63" stroke="#ffffff" stroke-width="2"/>
+<polyline points="64,316.9 247,277.4 430,213.4" fill="none" stroke="#13161c" stroke-width="2" stroke-dasharray="7 4"/>
+<line x1="64" x2="64" y1="316.9" y2="316.9" stroke="#13161c" stroke-width="1.5"/>
+<rect x="59.5" y="312.4" width="9" height="9" fill="#13161c" stroke="#ffffff" stroke-width="2"/>
+<line x1="247" x2="247" y1="280.1" y2="277.4" stroke="#13161c" stroke-width="1.5"/>
+<rect x="242.5" y="272.9" width="9" height="9" fill="#13161c" stroke="#ffffff" stroke-width="2"/>
+<line x1="430" x2="430" y1="217.6" y2="213.4" stroke="#13161c" stroke-width="1.5"/>
+<rect x="425.5" y="208.9" width="9" height="9" fill="#13161c" stroke="#ffffff" stroke-width="2"/>
+<polyline points="64,316.9 171,312.9 247,305.4 430,298.4" fill="none" stroke="#102c84" stroke-width="2"/>
+<line x1="64" x2="64" y1="316.9" y2="316.9" stroke="#102c84" stroke-width="1.5"/>
+<circle cx="64" cy="316.9" r="5" fill="#102c84" stroke="#ffffff" stroke-width="2"/>
+<line x1="171" x2="171" y1="312.9" y2="309.1" stroke="#102c84" stroke-width="1.5"/>
+<circle cx="171" cy="312.9" r="5" fill="#102c84" stroke="#ffffff" stroke-width="2"/>
+<line x1="247" x2="247" y1="305.4" y2="305.4" stroke="#102c84" stroke-width="1.5"/>
+<circle cx="247" cy="305.4" r="5" fill="#102c84" stroke="#ffffff" stroke-width="2"/>
+<line x1="430" x2="430" y1="298.4" y2="295.1" stroke="#102c84" stroke-width="1.5"/>
+<circle cx="430" cy="298.4" r="5" fill="#102c84" stroke="#ffffff" stroke-width="2"/>
+<text x="64" y="303.9" fill="#13161c" font-size="12" font-weight="400" text-anchor="middle">575</text>
+<text x="64" y="264.4" fill="#13161c" font-size="12" font-weight="400" text-anchor="middle">875</text>
+<text x="434" y="120.2" fill="#13161c" font-size="12" font-weight="400" text-anchor="end">1 block. No event in 32 seeds by step 4000.</text>
+<text x="434" y="194.4" fill="#13161c" font-size="12" font-weight="400" text-anchor="end">2 blocks, 1725</text>
+<text x="434" y="320.4" fill="#13161c" font-size="12" font-weight="400" text-anchor="end">untied, 700</text>
+<text x="488" y="76" fill="#13161c" font-size="13" font-weight="600" text-anchor="start">lr 1e-3</text>
+<line x1="488" x2="880" y1="330.1" y2="330.1" stroke="#d8dee4"/>
+<text x="480" y="334.1" fill="#55585f" font-size="11" font-weight="400" text-anchor="end">500</text>
+<line x1="488" x2="880" y1="264.8" y2="264.8" stroke="#d8dee4"/>
+<text x="480" y="268.8" fill="#55585f" font-size="11" font-weight="400" text-anchor="end">1000</text>
+<line x1="488" x2="880" y1="199.5" y2="199.5" stroke="#d8dee4"/>
+<text x="480" y="203.5" fill="#55585f" font-size="11" font-weight="400" text-anchor="end">2000</text>
+<line x1="488" x2="880" y1="134.2" y2="134.2" stroke="#d8dee4"/>
+<text x="480" y="138.2" fill="#55585f" font-size="11" font-weight="400" text-anchor="end">4000</text>
+<text x="504" y="360" fill="#55585f" font-size="11" font-weight="400" text-anchor="middle">2 layers</text>
+<text x="611" y="360" fill="#55585f" font-size="11" font-weight="400" text-anchor="middle">3</text>
+<text x="687" y="360" fill="#55585f" font-size="11" font-weight="400" text-anchor="middle">4</text>
+<text x="870" y="360" fill="#55585f" font-size="11" font-weight="400" text-anchor="middle">8</text>
+<polyline points="504,200.7 611,168.6 687,114.1" fill="none" stroke="#5a5d63" stroke-width="2" stroke-dasharray="2 3"/>
+<line x1="504" x2="504" y1="203.1" y2="199.5" stroke="#5a5d63" stroke-width="1.5"/>
+<path d="M504 194.2 L510.5 200.7 L504 207.2 L497.5 200.7 Z" fill="#5a5d63" stroke="#ffffff" stroke-width="2"/>
+<line x1="611" x2="611" y1="170.4" y2="164.5" stroke="#5a5d63" stroke-width="1.5"/>
+<path d="M611 162.1 L617.5 168.6 L611 175.1 L604.5 168.6 Z" fill="#5a5d63" stroke="#ffffff" stroke-width="2"/>
+<line x1="687" x2="687" y1="116" y2="109.9" stroke="#5a5d63" stroke-width="1.5"/>
+<path d="M687 107.6 L693.5 114.1 L687 120.6 L680.5 114.1 Z" fill="#5a5d63" stroke="#ffffff" stroke-width="2"/>
+<polyline points="504,241.9 687,194.9" fill="none" stroke="#13161c" stroke-width="2" stroke-dasharray="7 4"/>
+<line x1="504" x2="504" y1="243.8" y2="240.1" stroke="#13161c" stroke-width="1.5"/>
+<rect x="499.5" y="237.4" width="9" height="9" fill="#13161c" stroke="#ffffff" stroke-width="2"/>
+<line x1="687" x2="687" y1="197.2" y2="193.8" stroke="#13161c" stroke-width="1.5"/>
+<rect x="682.5" y="190.4" width="9" height="9" fill="#13161c" stroke="#ffffff" stroke-width="2"/>
+<polyline points="504,241.9 611,236.5 687,245.7" fill="none" stroke="#102c84" stroke-width="2"/>
+<line x1="504" x2="504" y1="243.8" y2="240.1" stroke="#102c84" stroke-width="1.5"/>
+<circle cx="504" cy="241.9" r="5" fill="#102c84" stroke="#ffffff" stroke-width="2"/>
+<line x1="611" x2="611" y1="238.3" y2="236.5" stroke="#102c84" stroke-width="1.5"/>
+<circle cx="611" cy="236.5" r="5" fill="#102c84" stroke="#ffffff" stroke-width="2"/>
+<line x1="687" x2="687" y1="247.6" y2="243.8" stroke="#102c84" stroke-width="1.5"/>
+<circle cx="687" cy="245.7" r="5" fill="#102c84" stroke="#ffffff" stroke-width="2"/>
+<text x="504" y="228.9" fill="#13161c" font-size="12" font-weight="400" text-anchor="middle">1275</text>
+<text x="504" y="187.7" fill="#13161c" font-size="12" font-weight="400" text-anchor="middle">1975</text>
+<text x="701" y="118.1" fill="#13161c" font-size="12" font-weight="400" text-anchor="start">1 block, 4950</text>
+<text x="701" y="188.9" fill="#13161c" font-size="12" font-weight="400" text-anchor="start">2 blocks, 2100</text>
+<text x="701" y="249.7" fill="#13161c" font-size="12" font-weight="400" text-anchor="start">untied, 1225</text>
+<text x="874" y="322.1" fill="#55585f" font-size="12" font-weight="400" text-anchor="end">depth 8 not run at this rate</text>
+</svg>

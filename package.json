@@ -1,15 +1,26 @@
 {
   "name": "induction-tab",
   "private": true,
+  "license": "MIT",
   "type": "module",
   "devDependencies": {
     "playwright": "1.64.1"
   },
   "scripts": {
+    "serve": "node -e \"import('./tools/serve.mjs').then(async ({ serve }) => console.log((await serve(process.cwd())).url))\"",
     "parity": "node tools/parity.mjs",
     "speedrun": "node tools/speedrun.mjs",
+    "bench": "node tools/speedrun.mjs \"$(cat configs/tab.json)\" 1,2,3,4,5 3000",
     "check": "node tools/check.mjs",
     "breakdown": "node tools/breakdown.mjs",
-    "verify-record": "node tools/verify-record.mjs"
+    "verify-record": "node tools/verify-record.mjs",
+    "compare": ".venv/bin/python tools/compare_native.py results/study-lr3e-3.jsonl results/browser-2-2.jsonl",
+    "speed-native": ".venv/bin/python ref/speed_native.py configs/tab.json cpu mps",
+    "study": ".venv/bin/python tools/analyze_study.py results/study-lr3e-3.jsonl results/study-lr1e-3.jsonl results/study-deep.jsonl results/study-curriculum.jsonl",
+    "anchor": ".venv/bin/python tools/analyze_anchor.py results/p2-T64-L2-u2.jsonl results/p2-T64-L2-u1.jsonl results/p2-T128-L2-u2.jsonl results/p2-T128-L2-u1.jsonl",
+    "heads": ".venv/bin/python tools/heads_looped.py \"$(cat configs/heads-looped.json)\" 2000 8 results/heads-looped-2-1.json",
+    "config-a": "node tools/dynamics.mjs \"$(cat configs/config-a.json)\" \"${SEEDS:-1-1}\" 9000 results/config-a.jsonl",
+    "read-runs": "node tools/read-runs.mjs",
+    "figures": "node tools/figures.mjs"
   }
 }

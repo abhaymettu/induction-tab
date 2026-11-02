@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 880 384" width="880" height="384" role="img" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace">
+<title>Seeds still without the event, by curriculum</title>
+<desc>Kaplan-Meier curves for four curricula on the study model at learning rate 3e-3, from results/study-summary.json.</desc>
+<rect width="880" height="384" fill="#0d1117"/>
+<text x="0" y="18" fill="#edebe5" font-size="14" font-weight="600" text-anchor="start">Seeds still without the event, by curriculum</text>
+<text x="0" y="38" fill="#a3a29c" font-size="12" font-weight="400" text-anchor="start">Study model, lr 3e-3. Logarithmic step axis. A curve crosses half at its median.</text>
+<line x1="70" x2="850" y1="92" y2="92" stroke="#21262d"/>
+<text x="60" y="96" fill="#a3a29c" font-size="11" font-weight="400" text-anchor="end">all seeds</text>
+<line x1="70" x2="850" y1="222" y2="222" stroke="#21262d"/>
+<text x="60" y="226" fill="#a3a29c" font-size="11" font-weight="400" text-anchor="end">half</text>
+<line x1="70" x2="850" y1="352" y2="352" stroke="#21262d"/>
+<text x="60" y="356" fill="#a3a29c" font-size="11" font-weight="400" text-anchor="end">none</text>
+<text x="306.2" y="372" fill="#a3a29c" font-size="11" font-weight="400" text-anchor="middle">step 500</text>
+<text x="442.1" y="372" fill="#a3a29c" font-size="11" font-weight="400" text-anchor="middle">1000</text>
+<text x="578.1" y="372" fill="#a3a29c" font-size="11" font-weight="400" text-anchor="middle">2000</text>
+<text x="714" y="372" fill="#a3a29c" font-size="11" font-weight="400" text-anchor="middle">4000</text>
+<text x="850" y="372" fill="#a3a29c" font-size="11" font-weight="400" text-anchor="middle">8000</text>
+<path d="M70 92 H850" fill="none" stroke="#62656b" stroke-width="2" stroke-dasharray="9 3 2 3"/>
+<line x1="850" x2="850" y1="86" y2="98" stroke="#62656b" stroke-width="2"/>
+<path d="M70 92 H797.6 V108.3 H810 V124.5 H821.7 V140.8 H828 V157 H830.7 V173.3 H836 V189.5 H836.7 V205.8 H837.3 V222 H839.3 V238.3 H841.2 V254.5 H843.1 V270.8 H848.8 V287 H850" fill="none" stroke="#959490" stroke-width="2" stroke-dasharray="2 3"/>
+<line x1="850" x2="850" y1="281" y2="293" stroke="#959490" stroke-width="2"/>
+<circle cx="837.3" cy="222" r="4.5" fill="#959490" stroke="#0d1117" stroke-width="2"/>
+<path d="M70 92 H421.5 V108.3 H426.8 V124.5 H426.8 V140.8 H432.1 V157 H432.1 V173.3 H432.1 V189.5 H437.2 V205.8 H447 V222 H447 V238.3 H451.7 V254.5 H451.7 V270.8 H456.3 V287 H460.8 V303.3 H460.8 V319.5 H460.8 V335.8 H465.2 V352" fill="none" stroke="#c9c8c2" stroke-width="2" stroke-dasharray="7 4"/>
+<circle cx="447" cy="222" r="4.5" fill="#c9c8c2" stroke="#0d1117" stroke-width="2"/>
+<path d="M70 92 H315.7 V96.1 H315.7 V100.1 H315.7 V104.2 H315.7 V108.3 H315.7 V112.3 H324.9 V116.4 H324.9 V120.4 H324.9 V124.5 H324.9 V128.6 H324.9 V132.6 H324.9 V136.7 H324.9 V140.8 H324.9 V144.8 H324.9 V148.9 H324.9 V152.9 H324.9 V157 H324.9 V161.1 H324.9 V165.1 H324.9 V169.2 H324.9 V173.3 H324.9 V177.3 H324.9 V181.4 H333.6 V185.4 H333.6 V189.5 H333.6 V193.6 H333.6 V197.6 H333.6 V201.7 H333.6 V205.8 H333.6 V209.8 H333.6 V213.9 H333.6 V217.9 H333.6 V222 H333.6 V226.1 H333.6 V230.1 H333.6 V234.2 H333.6 V238.3 H333.6 V242.3 H333.6 V246.4 H333.6 V250.4 H333.6 V254.5 H333.6 V258.6 H333.6 V262.6 H333.6 V266.7 H333.6 V270.8 H341.9 V274.8 H341.9 V278.9 H341.9 V282.9 H341.9 V287 H341.9 V291.1 H341.9 V295.1 H341.9 V299.2 H341.9 V303.3 H341.9 V307.3 H341.9 V311.4 H341.9 V315.4 H349.9 V319.5 H349.9 V323.6 H349.9 V327.6 H349.9 V331.7 H349.9 V335.8 H349.9 V339.8 H349.9 V343.9 H349.9 V347.9 H357.6 V352" fill="none" stroke="#fde16b" stroke-width="2.5"/>
+<circle cx="333.6" cy="222" r="4.5" fill="#fde16b" stroke="#0d1117" stroke-width="2"/>
+<text x="850" y="82" fill="#edebe5" font-size="12" font-weight="400" text-anchor="end">random characters, clone rule. No event in 16 seeds by step 8000.</text>
+<text x="299.6" y="190.8" fill="#edebe5" font-size="12" font-weight="400" text-anchor="end">random characters, periodic</text>
+<text x="299.6" y="206.8" fill="#a3a29c" font-size="12" font-weight="400" text-anchor="end">median 575, 64 seeds</text>
+<text x="479.2" y="190.8" fill="#edebe5" font-size="12" font-weight="400" text-anchor="start">Howe's language, periodic</text>
+<text x="479.2" y="206.8" fill="#a3a29c" font-size="12" font-weight="400" text-anchor="start">median 1025, 16 seeds</text>
+<text x="823.8" y="274" fill="#edebe5" font-size="12" font-weight="400" text-anchor="end">Howe's language, clone rule</text>
+<text x="823.8" y="290" fill="#a3a29c" font-size="12" font-weight="400" text-anchor="end">median 7500, 12 of 16 fired</text>
+</svg>
