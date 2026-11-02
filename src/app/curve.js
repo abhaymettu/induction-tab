@@ -18,6 +18,16 @@ const el = (name, cls, parent) => {
 };
 const set = (n, attrs) => { for (const k in attrs) n.setAttribute(k, attrs[k]); };
 const overlaps = (a, b) => a.x0 < b.x1 && b.x0 < a.x1 && a.y0 < b.y1 && b.y0 < a.y1;
+const segmentHits = (r, ax, ay, bx, by) => {
+  if (Math.max(ax, bx) < r.x0 || Math.min(ax, bx) > r.x1) return false;
+  const n = Math.ceil(Math.max(Math.abs(bx - ax), Math.abs(by - ay)) / 4) || 1;
+  for (let i = 0; i <= n; i++) {
+    const x = ax + ((bx - ax) * i) / n;
+    const y = ay + ((by - ay) * i) / n;
+    if (x > r.x0 && x < r.x1 && y > r.y0 && y < r.y1) return true;
+  }
+  return false;
+};
 
 export function createCurve(host, { threshold }) {
   const svg = el('svg', 'curve-svg', host);
@@ -26,23 +36,9 @@ export function createCurve(host, { threshold }) {
   const axis = el('line', 'axis', svg);
   const chance = el('line', 'ref dotted', svg);
   const thresh = el('line', 'ref dashed', svg);
-  const chanceText = el('text', 'note', svg);
-  chanceText.textContent = 'chance, ln 96 = 4.56';
-  const threshText = el('text', 'note', svg);
-  threshText.textContent = `${threshold} nats, the event`;
-  const stepEnd = el('text', 'note', svg);
-  const stepStart = el('text', 'note', svg);
-  stepStart.textContent = 'step 0';
-
-  const markText = () => {
-    const t = el('text', 'mark', svg);
-    t.word = el('tspan', '', t);
-    t.step = el('tspan', 'note', t);
-    return t;
-  };
   const marks = {
-    prev: { line: el('line', 'marker', svg), text: markText(), word: 'precursor', step: null, place: null },
-    event: { line: el('line', 'marker strong', svg), text: markText(), word: 'event', step: null, place: null },
+    prev: { line: el('line', 'marker', svg), word: 'precursor', step: null, place: null },
+    event: { line: el('line', 'marker strong', svg), word: 'event', step: null, place: null },
   };
 
   const loss = el('polyline', 'series loss', svg);
@@ -50,6 +46,20 @@ export function createCurve(host, { threshold }) {
   const advMuted = el('path', 'series adv silenced', svg);
   const dot = el('circle', 'dot', svg);
   dot.setAttribute('r', '4');
+
+  // Words come after every line, and each carries a halo of the page color, so a line never runs through a letter.
+  const chanceText = el('text', 'note', svg);
+  chanceText.textContent = 'chance, ln 96 = 4.56';
+  const threshText = el('text', 'note', svg);
+  threshText.textContent = `${threshold} nats, the event`;
+  const stepEnd = el('text', 'note', svg);
+  const stepStart = el('text', 'note', svg);
+  stepStart.textContent = 'step 0';
+  for (const mark of Object.values(marks)) {
+    mark.text = el('text', 'mark', svg);
+    mark.text.word = el('tspan', '', mark.text);
+    mark.text.step = el('tspan', 'note', mark.text);
+  }
   const lossLabel = el('text', 'end', svg);
   const advLabel = el('text', 'end strong', svg);
   const cross = el('line', 'cross', svg);
@@ -210,13 +220,11 @@ export function createCurve(host, { threshold }) {
         const ox0 = other.place.side < 0 ? ox - 6 - ow : ox + 6;
         if (overlaps({ x0: ox0, x1: ox0 + ow, y0: oy - 12, y1: oy + LINE + 4 }, r)) return true;
       }
-      for (const p of points) {
-        if (p.step > head) break;
-        const px = X(p.step);
-        if (px < r.x0 - 3 || px > r.x1 + 3) continue;
-        const ya = Y(p.adv);
-        const yl = Y(p.loss);
-        if ((ya > r.y0 - 2 && ya < r.y1 + 2) || (yl > r.y0 - 2 && yl < r.y1 + 2)) return true;
+      for (let i = 1; i < points.length && points[i].step <= head; i++) {
+        const a = points[i - 1];
+        const b = points[i];
+        if (segmentHits(r, X(a.step), Y(a.adv), X(b.step), Y(b.adv))) return true;
+        if (segmentHits(r, X(a.step), Y(a.loss), X(b.step), Y(b.loss))) return true;
       }
       return false;
     };

@@ -186,6 +186,8 @@ export function createCpuMaps(canvas, { T, H, L }) {
   };
 }
 
+const MAPS_SHARE = 0.62;
+const FOOT_SPACE = 28;
 const PREV_EARNED = 0.2;
 const PREFIX_EARNED = 0.2;
 const JOBS = {
@@ -271,17 +273,25 @@ export function createMaps(root, { canvas: firstCanvas, explain, T, H, L, onSile
   }
 
   // A device-pixel layout: whole-number texel scale when the screen allows it, so nearest neighbor stays crisp.
+  // Beside the clock the maps take what the window can show without scrolling, down to one CSS pixel per cell.
   function resize() {
     if (!renderer) return;
     const dpr = window.devicePixelRatio || 1;
-    const width = root.parentElement.clientWidth;
+    const column = root.parentElement;
+    const below = column.parentElement;
+    const beside = matchMedia('(min-width: 1181px)').matches;
+    const width = beside ? below.clientWidth * MAPS_SHARE : column.clientWidth;
     const narrow = width < 620;
     const gapCss = narrow ? 6 : 16;
     const capCss = narrow ? 26 : 30;
     const room = (width - gapCss * (H - 1)) / H;
-    const target = Math.min(room, narrow ? room : 192);
-    let scale = Math.floor((target * dpr) / T);
-    if (scale < 2) scale = (target * dpr) / T;
+    let target = narrow ? room : Math.min(room, 192);
+    if (beside) {
+      const foot = column.querySelector('.mapfoot').offsetHeight + FOOT_SPACE;
+      target = Math.max(T, Math.min(room, (innerHeight - below.offsetTop - L * capCss - foot) / L));
+    }
+    const exact = (target * dpr) / T;
+    const scale = exact < 1.9 ? exact : Math.max(2, Math.floor(exact));
     const size = Math.round(scale * T);
     const free = Math.floor((width * dpr - H * size) / (H - 1));
     const gap = narrow ? Math.max(1, free) : Math.round(gapCss * dpr);
@@ -290,6 +300,7 @@ export function createMaps(root, { canvas: firstCanvas, explain, T, H, L, onSile
     canvas.height = L * size + (L - 1) * cap;
     canvas.style.width = `${canvas.width / dpr}px`;
     canvas.style.height = `${canvas.height / dpr}px`;
+    if (beside) document.documentElement.style.setProperty('--maps-width', canvas.style.width);
     root.style.setProperty('--map', `${size / dpr}px`);
     root.style.setProperty('--map-gap', `${gap / dpr}px`);
     root.style.setProperty('--cap', `${cap / dpr}px`);
@@ -298,6 +309,7 @@ export function createMaps(root, { canvas: firstCanvas, explain, T, H, L, onSile
   }
 
   new ResizeObserver(resize).observe(root.parentElement);
+  addEventListener('resize', resize);
 
   return {
     use(r, c) { renderer = r; canvas = c; resize(); },

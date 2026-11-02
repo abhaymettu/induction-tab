@@ -64,7 +64,7 @@ button { font: inherit; color: inherit; }
 
 .live {
   position: relative;
-  max-width: 1680px;
+  max-width: 2240px;
   margin-inline: auto;
   padding: 0 var(--gut) 56px;
   min-height: 100svh;
@@ -143,9 +143,9 @@ button { font: inherit; color: inherit; }
 }
 .start:active { transform: scale(0.97); }
 
-.say { min-height: 68px; }
+.say { min-height: 68px; padding-bottom: 0.5rem; }
 .line {
-  font-size: clamp(1.125rem, 2cqw, 1.75rem);
+  font-size: clamp(1.125rem, 2cqw, 2.5rem);
   line-height: 1.25;
   letter-spacing: -0.015em;
   min-height: 1.25em;
@@ -324,7 +324,7 @@ button { font: inherit; color: inherit; }
   gap: 3rem;
   margin-top: 0;
 }
-.attention { min-width: min(100%, 816px); width: 816px; max-width: 100%; }
+.attention { width: var(--maps-width, 816px); max-width: 100%; }
 .maps {
   --map: 192px;
   --map-gap: 16px;
@@ -390,7 +390,7 @@ button { font: inherit; color: inherit; }
 .clockcurve { display: flex; flex-direction: column; min-width: 0; padding-top: 1.1rem; }
 .clock { display: flex; align-items: baseline; gap: 0.75rem; }
 #clock {
-  font-size: clamp(4.75rem, 9.6cqw, 9rem);
+  font-size: clamp(4.75rem, 9.6cqw, 13rem);
   font-weight: 300;
   line-height: 0.92;
   letter-spacing: -0.055em;
@@ -401,10 +401,10 @@ button { font: inherit; color: inherit; }
 .unit { font-size: 0.8125rem; color: var(--ink-3); }
 .curve { flex: 1; min-height: 240px; margin-top: 0.75rem; position: relative; }
 .curve-svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; touch-action: pan-y; }
-.curve-svg text { font-size: 0.75rem; font-family: inherit; }
+.curve-svg text { font-size: 0.75rem; font-family: inherit; paint-order: stroke; stroke: var(--bg); stroke-width: 5px; stroke-linejoin: round; }
 .note { fill: var(--ink-3); }
 .mark { fill: var(--ink-2); }
-.tip { fill: var(--ink); paint-order: stroke; stroke: var(--bg); stroke-width: 6px; stroke-linejoin: round; }
+.tip { fill: var(--ink); }
 .end { fill: var(--ink-2); }
 .end.strong { fill: var(--ink); font-weight: 500; }
 .axis { stroke: var(--rule-2); stroke-width: 1; }
@@ -444,13 +444,19 @@ button { font: inherit; color: inherit; }
 
 /* After the live view */
 
-.after, .notes, .foot { max-width: 1680px; margin-inline: auto; padding-inline: var(--gut); }
+.after, .notes, .foot { max-width: 2240px; margin-inline: auto; padding-inline: var(--gut); }
 .after { padding-block: 3.5rem; border-top: 1px solid var(--rule); }
 /* The notes hang from the same vertical axis as the clock and the curve. */
 .after-grid, .notes > section {
   display: grid;
-  grid-template-columns: minmax(0, 816px) minmax(0, 1fr);
+  grid-template-columns: minmax(0, var(--maps-width, 816px)) minmax(0, 1fr);
   gap: 2rem 3rem;
+}
+/* Tables and the study chart need the whole width, so these sections drop the inner column above the wide screens. */
+@media (min-width: 761px) {
+  .data > div { display: contents; }
+  .data > div > p { grid-column: 2; }
+  .data .study-fig, .data .table-wrap { grid-column: 1 / -1; margin-top: 0; }
 }
 .worked { margin-top: 2.25rem; max-width: 40rem; color: var(--ink-2); font-size: 0.9375rem; line-height: 1.5; }
 .worked-rows {
@@ -532,7 +538,7 @@ td { padding: 0.5rem 1.25rem 0.5rem 0; border-bottom: 1px solid var(--rule); col
 td.num, th.num { text-align: right; }
 .empty { color: var(--ink-2); }
 
-.study-fig { height: 300px; position: relative; }
+.study-fig { height: 320px; position: relative; }
 .study-fig svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
 .study-fig text { font-size: 0.75rem; font-family: inherit; fill: var(--ink-2); }
 .study-fig .note { fill: var(--ink-3); }
@@ -605,7 +611,8 @@ td.num, th.num { text-align: right; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .band, .cover, .say, .prompt, .steerline, .below, .controls, .caption { transition: opacity 200ms ease; transform: none !important; }
+  .cover, .say, .prompt, .steerline, .below, .controls, .caption { transition: opacity 200ms ease; transform: none !important; }
+  [data-phase="training"] .band { transition: none; }
   .lo { transition: none; }
   [data-arrived] .lo { transform: none; }
   .bar, .n u { transition: none; }

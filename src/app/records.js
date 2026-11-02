@@ -23,7 +23,7 @@ export async function loadRecords() {
   }
   rows.sort((a, b) => a.medianSeconds - b.medianSeconds);
   const head = table.createTHead().insertRow();
-  [['adapter'], ['browser'], ['median seconds', 'num'], ['seeds', 'num'], ['submitter'], ['log']].forEach(([label, cls]) => {
+  [['median seconds', 'num'], ['adapter'], ['browser'], ['seeds', 'num'], ['submitter'], ['log']].forEach(([label, cls]) => {
     const th = document.createElement('th');
     th.textContent = label;
     if (cls) th.className = cls;
@@ -38,9 +38,9 @@ export async function loadRecords() {
       if (cls) td.className = cls;
       return td;
     };
+    add(Number(r.medianSeconds).toFixed(2), 'num');
     add(String(r.adapter ?? ''));
     add(String(r.browser ?? ''));
-    add(Number(r.medianSeconds).toFixed(2), 'num');
     add(String(r.seeds ?? ''), 'num');
     add(String(r.submitter ?? ''));
     const logCell = add('');
@@ -80,7 +80,7 @@ export async function loadStudy() {
     svg.setAttribute('viewBox', `0 0 ${w} ${h}`);
     svg.replaceChildren();
     const labelRoom = w < 420 ? 96 : 170;
-    const m = { l: 2, t: 16, b: 24 };
+    const m = { l: 2, t: 22, b: 24 };
     const X = (s) => m.l + (s / maxStep) * (w - m.l - labelRoom);
     const Y = (v) => m.t + (1 - v) * (h - m.t - m.b);
     const text = (x, y, t, cls, anchor) => {
@@ -92,7 +92,8 @@ export async function loadStudy() {
       n.textContent = t;
       svg.append(n);
     };
-    text(m.l, m.t - 4, 'all seeds without the event', 'note');
+    text(m.l, m.t - 8, 'all seeds still without the event', 'note');
+    text(m.l, Y(0) - 7, 'none', 'note');
     text(m.l, h - 4, 'step 0', 'note');
     text(w - labelRoom, h - 4, `step ${maxStep}`, 'note', 'end');
     const ends = [];
@@ -125,7 +126,7 @@ export async function loadStudy() {
 
   const table = document.getElementById('studyTable');
   const head = table.createTHead().insertRow();
-  [['configuration'], ['seeds', 'num'], ['events', 'num'], ['median step', 'num'], ['95% interval', 'num']].forEach(([label, cls]) => {
+  [['configuration'], ['median step', 'num'], ['95% interval', 'num'], ['events', 'num'], ['seeds', 'num']].forEach(([label, cls]) => {
     const th = document.createElement('th');
     th.textContent = label;
     if (cls) th.className = cls;
@@ -136,9 +137,9 @@ export async function loadStudy() {
     const tr = body.insertRow();
     const add = (t, cls) => { const td = tr.insertCell(); td.textContent = t; if (cls) td.className = cls; };
     add(a.label);
-    add(String(a.n), 'num');
-    add(String(a.events), 'num');
     add(a.medianStep === null || a.medianStep === undefined ? 'not reached' : String(a.medianStep), 'num');
     add(a.ci ? `${a.ci[0] ?? 'open'} to ${a.ci[1] ?? 'open'}` : '', 'num');
+    add(String(a.events), 'num');
+    add(String(a.n), 'num');
   }
 }

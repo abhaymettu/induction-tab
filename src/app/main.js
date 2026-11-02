@@ -309,6 +309,7 @@ async function useRecording(reason) {
   stream = createStream($('stream'), source.tokens, { onHover });
   stream.clear();
   setPhase('ready');
+  maps.resize();
   measureCover();
   steer.setEnabled(false, placeholders().closed);
   $('again').textContent = 'Play the recording again';
@@ -429,6 +430,7 @@ async function boot() {
   stream = createStream($('stream'), source.tokens, { onHover });
   stream.clear();
   setPhase('ready');
+  maps.resize();
   measureCover();
   if (params.has('bench')) { runBench(); return; }
   if (queuedStart) { queuedStart = false; begin(); }
