@@ -20,3 +20,7 @@ Test, seeds 1 to 32, lr 3e-3, budget 4000 steps, same family as the first study:
 ## Exploratory, labeled as such
 
 Per-head attention in the (2,1) arm: whether the same head is a previous-token head on the first pass and an induction head on the second, or the block splits its heads between the roles.
+
+## Prediction 3: is the speed the curriculum's or the configuration's?
+
+Added 2026-11-02 about 03:00 CST after the second novelty pass, before any of these runs. Same model and learning rate as the first study's (2,2) arm, seeds 1 to 16, budget 8000 steps, three curricula against its uniform-tiled result: bigram language with Howe's clone rule, uniform tokens with the clone rule, bigram language with tiled repeats. No direction is claimed beyond what these arms show. The tab's speed may be credited to the curriculum only by this comparison.
