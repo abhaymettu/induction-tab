@@ -1,0 +1,8 @@
+{
+ "cfg": "configs/tab.json",
+ "torch": "2.15.0",
+ "machine": "arm",
+ "threads": 8,
+ "cpuMsPerStep": 13.934083515778184,
+ "mpsMsPerStep": 5.500208004377782
+}

@@ -1,1 +1,10 @@
-[]
+[
+  {
+    "adapter": "Apple metal-3 (M4 Pro)",
+    "browser": "Chrome 156",
+    "medianSeconds": 4.90,
+    "seeds": 5,
+    "submitter": "Abhay Mettu",
+    "log": "https://github.com/abhaymettu/induction-tab/blob/main/records/m4pro-chrome.json"
+  }
+]

@@ -24,3 +24,7 @@ Per-head attention in the (2,1) arm: whether the same head is a previous-token h
 ## Prediction 3: is the speed the curriculum's or the configuration's?
 
 Added 2026-11-02 about 03:00 CST after the second novelty pass, before any of these runs. Same model and learning rate as the first study's (2,2) arm, seeds 1 to 16, budget 8000 steps, three curricula against its uniform-tiled result: bigram language with Howe's clone rule, uniform tokens with the clone rule, bigram language with tiled repeats. No direction is claimed beyond what these arms show. The tab's speed may be credited to the curriculum only by this comparison.
+
+## Addition: the tab's own model on Howe's curriculum
+
+Added 2026-11-02 09:30 CST, before this run. Prediction 3 used the study model. This arm is the frozen tab config with only the curriculum changed to Howe's language and clone rule (uniform false, tile false, pRep 0.75, default r range), seeds 1 to 8, budget 8000, to say at the tab's own size whether the tab could have used that curriculum. Eight seeds, exploratory, no contrast claimed beyond the counts and the median against the tab config's own steps on the same seeds.
