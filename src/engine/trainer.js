@@ -356,7 +356,7 @@ export async function createTrainer(device, cfg) {
     // Appended by the training loop when present: the first probe sequence's per-position loss, then train loss.
     const seqLoss = f.length > nScores + pT ? f.subarray(nScores + pT, nScores + 2 * pT) : null;
     const trainLoss = f.length > nScores + pT ? f[nScores + 2 * pT] : null;
-    return { scores, ce: Array.from(ce), copyAdv: first / (half - 1) - second / half, seqLoss, trainLoss };
+    return { scores, ce: Array.from(ce), firstPass: first / (half - 1), secondPass: second / half, copyAdv: first / (half - 1) - second / half, seqLoss, trainLoss };
   };
 
   const destroy = () => {

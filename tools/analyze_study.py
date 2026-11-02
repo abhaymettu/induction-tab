@@ -69,7 +69,7 @@ def lognormal_fit(t, e):
         z = (lt - mu) / sig
         ll = normal.log_prob(z[ev]).sum() - ev.sum() * ls
         if (~ev).any():
-            ll = ll + torch.log(torch.clamp(1 - normal.cdf(z[~ev]), min=1e-12)).sum()
+            ll = ll + torch.special.log_ndtr(-z[~ev]).sum()
         nll = -ll
         nll.backward()
         return nll
@@ -148,8 +148,11 @@ def main(paths):
             ratios.append(lognormal_fit(A["_t"][ia], A["_e"][ia])[0] - lognormal_fit(B["_t"][ib], B["_e"][ib])[0])
         tr = float(np.exp(mua - mub))
         lo, hi = np.exp(np.percentile(ratios, [2.5, 97.5])) if ratios else (float("nan"), float("nan"))
+        km_boot = [km_median(A["_t"][ia], A["_e"][ia]) / km_median(B["_t"][ib], B["_e"][ib]) for ia, ib in ((rng.integers(0, len(A["_t"]), len(A["_t"])), rng.integers(0, len(B["_t"]), len(B["_t"]))) for _ in range(BOOT))]
+        km_lo, km_hi = np.percentile(km_boot, [2.5, 97.5])
+        km_ratio = A["medianStep"] / B["medianStep"]
         fr = A["_cost"] / B["_cost"]
-        out.append({"kind": kind, "a": a, "b": b, "lr": lr, "timeRatio": tr, "ci": [float(lo), float(hi)], "flopRatio": tr * fr, "flopCi": [float(lo * fr), float(hi * fr)]})
+        out.append({"kind": kind, "a": a, "b": b, "lr": lr, "timeRatio": tr, "ci": [float(lo), float(hi)], "kmRatio": km_ratio, "kmCi": [float(km_lo), float(km_hi)], "flopRatio": tr * fr, "flopCi": [float(lo * fr), float(hi * fr)]})
 
     public = [{**{k: v for k, v in s.items() if not k.startswith("_")}, "label": f"{s['L']} layers, {s['u']} unique, lr {s['lr']:g}" + ("" if s["curriculum"] == TILED else f", {s['curriculum']}")} for s in summary.values()]
     Path("results").mkdir(exist_ok=True)
@@ -159,12 +162,12 @@ def main(paths):
     for s in public:
         g = s["gap"]
         lines.append(f"| {s['L']} | {s['u']} | {s['lr']:g} | {s['curriculum']} | {s['n']} | {s['events']} | " + (f"{s['medianStep']} ({s['ci'][0]:.0f} to {s['ci'][1]:.0f})" if s["ci"] else f"{s['medianStep']} (interval unbounded)" if s["medianStep"] else "not reached") + " | " + (f"{g['median']:.3f} ({g['iqr'][0]:.3f} to {g['iqr'][1]:.3f}) | {g['inEnvelope']:.2f} | {g['rho']:.2f} | " if g else "n/a | n/a | n/a | ") + f"{s['anchorNoFire']} |")
-    lines += ["", "| contrast | lr | time ratio, steps (95% CI) | time ratio, flops (95% CI) |", "|---|---|---|---|"]
+    lines += ["", "| contrast | lr | time ratio, steps (95% CI) | ratio of KM medians (95% CI) | time ratio, flops (95% CI) |", "|---|---|---|---|---|"]
     for r in out:
         if r["timeRatio"] is None:
-            lines.append(f"| {r['kind']}: {r['a']} vs {r['b']} | {r['lr']:g} | above {r['atLeast']:.2f}, no events in budget | n/a |")
+            lines.append(f"| {r['kind']}: {r['a']} vs {r['b']} | {r['lr']:g} | above {r['atLeast']:.2f}, no events in budget | n/a | n/a |")
             continue
-        lines.append(f"| {r['kind']}: {r['a']} vs {r['b']} | {r['lr']:g} | {r['timeRatio']:.3f} ({r['ci'][0]:.3f} to {r['ci'][1]:.3f}) | {r['flopRatio']:.3f} ({r['flopCi'][0]:.3f} to {r['flopCi'][1]:.3f}) |")
+        lines.append(f"| {r['kind']}: {r['a']} vs {r['b']} | {r['lr']:g} | {r['timeRatio']:.3f} ({r['ci'][0]:.3f} to {r['ci'][1]:.3f}) | {r['kmRatio']:.3f} ({r['kmCi'][0]:.3f} to {r['kmCi'][1]:.3f}) | {r['flopRatio']:.3f} ({r['flopCi'][0]:.3f} to {r['flopCi'][1]:.3f}) |")
     Path("results/study-table.md").write_text("\n".join(lines) + "\n")
     print("\n".join(lines))
 
