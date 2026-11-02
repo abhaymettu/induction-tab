@@ -158,7 +158,7 @@ def main(paths):
     lines = ["| layers | unique | lr | curriculum | n | events | median step (95% CI) | gap median (IQR) | in envelope | rho | anchor never fired |", "|---|---|---|---|---|---|---|---|---|---|---|"]
     for s in public:
         g = s["gap"]
-        lines.append(f"| {s['L']} | {s['u']} | {s['lr']:g} | {s['curriculum']} | {s['n']} | {s['events']} | " + (f"{s['medianStep']} ({s['ci'][0]:.0f} to {s['ci'][1]:.0f})" if s["ci"] else "not reached") + " | " + (f"{g['median']:.3f} ({g['iqr'][0]:.3f} to {g['iqr'][1]:.3f}) | {g['inEnvelope']:.2f} | {g['rho']:.2f} | " if g else "n/a | n/a | n/a | ") + f"{s['anchorNoFire']} |")
+        lines.append(f"| {s['L']} | {s['u']} | {s['lr']:g} | {s['curriculum']} | {s['n']} | {s['events']} | " + (f"{s['medianStep']} ({s['ci'][0]:.0f} to {s['ci'][1]:.0f})" if s["ci"] else f"{s['medianStep']} (interval unbounded)" if s["medianStep"] else "not reached") + " | " + (f"{g['median']:.3f} ({g['iqr'][0]:.3f} to {g['iqr'][1]:.3f}) | {g['inEnvelope']:.2f} | {g['rho']:.2f} | " if g else "n/a | n/a | n/a | ") + f"{s['anchorNoFire']} |")
     lines += ["", "| contrast | lr | time ratio, steps (95% CI) | time ratio, flops (95% CI) |", "|---|---|---|---|"]
     for r in out:
         if r["timeRatio"] is None:
