@@ -6,3 +6,5 @@ for lr, name in ((0.003, "study-lr3e-3"), (0.001, "study-lr1e-3")):
     arms = [{**base, "L": L, "unique": u, "lr": lr} for L, u in shapes]
     json.dump(arms, open(f"configs/search/{name}.json", "w"))
 json.dump([{**base, "L": 1, "unique": 1, "lr": 0.003}, {**base, "L": 2, "unique": 2, "lr": 0.003, "pRep": 0}], open("configs/search/study-negatives.json", "w"))
+deep = [{**base, "L": L, "unique": u, "lr": 0.003} for L, u in [(8, 8), (8, 2), (8, 1)]]
+json.dump(deep, open("configs/search/study-deep.json", "w"))
