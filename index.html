@@ -141,7 +141,9 @@
     <h2>What correct means here</h2>
     <div>
       <p>The trainer is raw WGSL. The forward pass, the backward pass and AdamW are written by hand, with no ML library underneath. <code>npm run parity</code> checks the gradient of every parameter tensor against PyTorch autograd, and they agree to about 1e-6 relative L2. So what ran on your GPU computes the gradients PyTorch would.</p>
-      <p>The stronger test is a whole run. Started from the same weights on the same batches, this trainer and native PyTorch reached the event at the same step on all 64 seeds of the study's two-layer model. Their copy advantage never differed by more than 3.2e-6 at any evaluation, one on a GPU and the other on a CPU.</p>
+      <p>The stronger test is a whole run. Started from the same weights on the same batches, this trainer and native PyTorch reached the event at the same evaluation on all 64 seeds of the study's two-layer model and on all 8 seeds run of the tab's own model. Their copy advantage never differed by more than 4.4e-6, one on a GPU and the other on a CPU.</p>
+      <p>It is not faster than native. On the M4 Pro this trainer takes 10.3 ms per step on the tab's model, PyTorch takes 5.5 on the same GPU through MPS, and 13.9 on the CPU with 8 threads. The point is that nothing needs installing.</p>
+      <p>Run at Gunner Howe's own configuration, far larger than the tab's, with Howe's language, anchor and event, this trainer reached the event at step <span id="configA">6225</span>, inside the range Howe reports for 30 seeds, 5650 to 7400. The anchor fired at 0.847 of that time, against Howe's median of 0.844. It takes 24 minutes a seed, so this is a check on the window and the fraction, not a rerun of the fleet.</p>
       <p>The configuration is 96 printable ASCII characters, 128 characters of context, width 128, 4 heads, 2 layers, batch 16. It trains only on uniform random characters made periodic.</p>
     </div>
   </section>
@@ -150,7 +152,7 @@
     <h2>What did not work</h2>
     <div>
       <p>Gunner Howe's curriculum is too slow for a tab at this size. On a model of width 64 and context 64 it took a median of 7500 steps, against 575 for random characters repeating at random periods, which puts all the pressure on copying. The numbers are under Across seeds below.</p>
-      <p>Two negative controls showed no event in 6000 steps, on 8 seeds each. One layer has no head beneath it to read the previous character, and its copy advantage stayed at or below 1.14. A model that never sees a repeat has nothing to copy, and stayed at or below 0.003.</p>
+      <p>Two negative controls showed no event in 6000 steps, on 8 seeds each. One layer has no head beneath it to read the previous character, and its copy advantage never passed 1.20. A model that never sees a repeat has nothing to copy, and it never passed 0.07.</p>
     </div>
   </section>
 
@@ -171,6 +173,7 @@
       <p>Shared weights delay the event, and the delay grows with depth. A block here is one set of weights, so 8 layers with 1 block is the same block applied 8 times. At equal depth, fewer blocks means a later event, up to depth 8, where one block had not fired in 32 seeds by step 4000. Extra depth with its own weights costs little in steps. A filled circle is a model whose every layer has its own weights.</p>
       <figure class="study-fig rows" id="studyForest"></figure>
       <div class="table-wrap"><table id="studyTable"></table></div>
+      <p>The precursor is a weaker clock on these small models than in Gunner Howe's fleet, where it fires at a median 0.844 of the time to the event and every seed falls between 0.735 and 0.901. Across the arms above the medians run from 0.73 to 0.85, and three sat just under that range, which fired a falsifier we had written down in advance. We guessed the cause was how close the 0.10 threshold sits to chance on a short probe. That was wrong. The cause on the two-layer arm is the evaluation clock: on an event near step 575, evaluating every 25 steps adds a real delay. New seeds evaluated every 5 steps read 0.756, and the same runs read at 25-step spacing give 0.727, the first study's median. Spacing does not explain Howe's curriculum on this model at 0.63, or 8 layers with 2 blocks at 0.68, so the fraction does not carry everywhere. A rescaled threshold we preregistered also missed on one arm, 0.903 against 0.901.</p>
       <p>We did not find this delay reported within our search. The closest work finds looped models earlier than a dense model, on other tasks and at greater depth (<a href="https://arxiv.org/abs/2610.31421">2610.31421</a>, <a href="https://arxiv.org/abs/2610.24135">2610.24135</a>), and we do not claim a contradiction.</p>
     </div>
   </section>

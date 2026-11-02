@@ -10,8 +10,8 @@ export const WG = 64;
 // z is split as (zo, zi) so one dispatch walks (batch, head) with independent strides.
 // Flag 8 reads A as if it had one more row of ones, which folds the gradient of a bias stored right
 // after its weight matrix into the same matmul.
-// Tile 32 won a direct comparison against 8, 16 and shared-memory-free variants on Metal (scratch bench,
-// see RUNLOG): smaller tiles do less work per barrier and run up to 6x slower.
+// Tile 32 won a direct comparison against 8, 16 and shared-memory-free variants on Metal: smaller tiles do
+// less work per barrier and run up to 6x slower.
 export const gemm = (tile, tk = 16) => {
   const threads = tile / 4;
   const loads = (tile * tk) / (threads * threads);

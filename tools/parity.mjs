@@ -14,6 +14,7 @@ const CONFIGS = {
   looped: { V: 128, T: 32, d: 32, H: 2, L: 4, unique: 2, B: 4, probeB: 8, probeT: 32 },
   attnonly: { V: 128, T: 32, d: 32, H: 4, L: 2, unique: 2, B: 4, mlp: 0, ln: false, probeB: 8, probeT: 32 },
   demo: { V: 512, T: 128, d: 128, H: 4, L: 2, unique: 2, B: 8, probeB: 16, probeT: 128 },
+  tab: JSON.parse(fs.readFileSync(new URL('../configs/tab.json', import.meta.url), 'utf8')),
   ...JSON.parse(process.env.PARITY_EXTRA ?? '{}'),
 };
 const names = process.argv.slice(2).length ? process.argv.slice(2) : Object.keys(CONFIGS);

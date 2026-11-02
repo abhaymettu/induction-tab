@@ -1,6 +1,6 @@
 """Browser WGSL trainer against native PyTorch, seed by seed, per research/PREREG.md. Writes results/native-vs-browser.json.
 
-    python tools/compare_native.py results/study-lr3e-3.jsonl results/browser-2-2.jsonl
+    python tools/compare_native.py results/study-lr3e-3.jsonl results/browser-2-2.jsonl results/native-vs-browser.json
 """
 import json
 import sys
@@ -13,7 +13,7 @@ def rows(path):
     return [json.loads(line) for line in Path(path).read_text().splitlines()]
 
 
-def main(native_path, browser_path):
+def main(native_path, browser_path, out_path):
     browser = {r["seed"]: r for r in rows(browser_path)}
     cfg = next(iter(browser.values()))["cfg"]
     native = {r["seed"]: r for r in rows(native_path) if r["cfg"] == cfg}
@@ -36,7 +36,7 @@ def main(native_path, browser_path):
         "worstCopyAdvDifference": worst_copy, "worstLossDifference": worst_loss,
         "pass": bool(abs(np.median(t_browser - t_native)) <= 25),
     }
-    Path("results/native-vs-browser.json").write_text(json.dumps(out, indent=1) + "\n")
+    Path(out_path).write_text(json.dumps(out, indent=1) + "\n")
     print(json.dumps(out))
 
 

@@ -30,9 +30,9 @@ On an M4 Pro in Chrome, with nothing else on the GPU, seeds 1 to 5 reach the eve
 
 The trainer is hand-written WGSL for the forward pass, the backward pass, and AdamW. Two checks compare it to PyTorch, and the negative controls test the instruments.
 
-**Gradients match.** `npm run parity` feeds the same weights and batches to PyTorch autograd and to the trainer for 20 steps, then compares every parameter tensor. The worst per-tensor gradient relative L2 is about 1e-6.
+**Gradients match.** `npm run parity` feeds the same weights and batches to PyTorch autograd and to the trainer for 20 steps, then compares every parameter tensor, on five configurations including the tab's own. The worst per-tensor gradient relative L2 is 1.13e-6.
 
-**Whole runs match.** The study's two-layer model ran 64 seeds both ways, from the same weights on the same batches, one on Metal and the other PyTorch on a CPU. Both reach the same event step and the same anchor step on 64 of 64 seeds, with evals 25 steps apart. The anchor is Howe's precursor, the first eval where a first-layer head reaches a previous-token score of 0.10. The worst copy advantage difference across 1539 evals is 3.2e-6.
+**Whole runs match.** The study's two-layer model ran 64 seeds both ways, from the same weights on the same batches, one on Metal and the other PyTorch on a CPU. Both reach the same event step and the same anchor step on 64 of 64 seeds, with evals 25 steps apart. The anchor is Howe's precursor, the first eval where a first-layer head reaches a previous-token score of 0.10. The worst copy advantage difference across 1539 evals is 3.2e-6. The tab's own model matches the same way on the 8 seeds run so far, worst difference 4.4e-6 (`results/tab-native-vs-browser.json`).
 
 **Negative controls show no event.** One layer has no head beneath it to read the previous character, and a model that never sees a repeat has nothing to copy. Each ran 8 seeds for 6000 steps with zero events. One layer peaked at 1.20 nats of copy advantage. No repeats peaked at 0.067, at step 0, and ended at or below 0.003.
 
@@ -105,8 +105,9 @@ GPU commands need Google Chrome installed. `bench`, `breakdown`, `parity`, and `
 | Seconds to the event, M4 Pro | median 4.9 s, 10.3 ms per step | `npm run bench` | `results/bench-m4pro.txt` |
 | Where a step goes | 8.44 of 10.04 ms in matrix multiplies | `npm run breakdown` | `results/breakdown-m4pro.txt` |
 | Native speed | MPS 5.5, CPU 13.9 ms per step | `npm run speed-native` | `results/native-speed.json` |
-| Gradients against PyTorch | about 1e-6 relative L2 | `npm run parity` | `results/parity-apple-metal-3.json` |
+| Gradients against PyTorch | 1.13e-6 relative L2 at worst | `npm run parity` | `results/parity-apple-metal-3.json` |
 | Whole runs against PyTorch | 64 of 64 seeds, worst difference 3.2e-6 | `npm run compare` | `results/native-vs-browser.json` |
+| Whole runs, the tab's own model | 8 of 8 seeds, worst difference 4.4e-6 | `npm run compare-tab` | `results/tab-native-vs-browser.json` |
 | Negative controls | 0 events, peaks 1.20 and 0.067 | `npm run read-runs` | printed, from `results/study-negatives.jsonl` |
 | Medians by curriculum and arm | 575, 1025, 7500 | `npm run study` | `results/study-table.md` |
 | Tying and depth time ratios | 1.55, 2.20, 2.83, and the rest | `npm run study` | `results/study-table.md` |
@@ -148,7 +149,6 @@ SEEDS=2-30 npm run config-a
 
 - **Other browsers and GPUs.** Safari, Firefox, real phones, and non-Apple GPUs have not been measured. Only an M4 Pro and SwiftShader have, so this repo makes no claim about an ordinary laptop. One automated Safari check timed out in a background tab (`tools/safari.mjs`).
 - **The clock while you watch.** The 4.9 s comes from the benchmark, which holds the page still. A run you watch also draws, so expect its clock to read higher. We have no timing of the drawing page on an idle GPU.
-- **The exact tab config against PyTorch.** Parity runs on other configs, and the whole-run match is on the study model. Neither has run on `configs/tab.json`. The committed parity files hold only the configs last run on each adapter, plain and small on Metal, small and attention-only on SwiftShader. `npm run parity` runs small, looped, attention-only, and demo.
 - **How often a seed stalls.** All of seeds 1 to 5 fire on the tab config, and five seeds give no stall rate. At width 64 and context 128, 6 of 121 stored runs had no event in 6000 steps. The page says so when this happens and offers a new seed.
 - **Novelty.** "Not found" means not found within the searches logged in [`research/NOVELTY-2.md`](research/NOVELTY-2.md). The two closest demos are low visibility and turned up late, so others may exist.
 

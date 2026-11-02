@@ -1,0 +1,158 @@
+{
+ "cfg": {
+  "V": 96,
+  "T": 128,
+  "d": 128,
+  "H": 4,
+  "L": 2,
+  "unique": 2,
+  "B": 16,
+  "mlp": 4,
+  "ln": true,
+  "lnAffine": false,
+  "lr": 0.003,
+  "uniform": true,
+  "tile": true,
+  "pRep": 1,
+  "rMin": 4,
+  "rMax": 64,
+  "probeB": 16,
+  "probeT": 128
+ },
+ "browser": "156.0.8078.74",
+ "adapter": "apple metal-3",
+ "params": 435456,
+ "dispatches": 65,
+ "stepMs": 10.040000009536744,
+ "overheadMsPerDispatch": 0.0015999999046325682,
+ "phases": {
+  "data": {
+   "dispatches": 1,
+   "ms": 0.039999961853027344
+  },
+  "fwd": {
+   "dispatches": 23,
+   "ms": 1.8799999713897706
+  },
+  "loss": {
+   "dispatches": 2,
+   "ms": 0.2
+  },
+  "bwd": {
+   "dispatches": 37,
+   "ms": 8.52000002861023
+  },
+  "tick": {
+   "dispatches": 1,
+   "ms": 0.02000002861022949
+  },
+  "opt": {
+   "dispatches": 1,
+   "ms": 0.07999997138977051
+  }
+ },
+ "kernels": {
+  "DATA": {
+   "dispatches": 1,
+   "ms": 0.039999961853027344
+  },
+  "EMBED_FWD": {
+   "dispatches": 1,
+   "ms": 0.04000000953674317
+  },
+  "LN_FWD": {
+   "dispatches": 5,
+   "ms": 0.2
+  },
+  "GEMM": {
+   "dispatches": 39,
+   "ms": 8.439999961853028
+  },
+  "SOFTMAX_FWD": {
+   "dispatches": 2,
+   "ms": 0.12000002861022949
+  },
+  "GELU_FWD": {
+   "dispatches": 2,
+   "ms": 0.15999999046325683
+  },
+  "XENT": {
+   "dispatches": 1,
+   "ms": 0.05999999046325684
+  },
+  "LN_BWD_X": {
+   "dispatches": 5,
+   "ms": 0.18000001907348634
+  },
+  "GELU_BWD": {
+   "dispatches": 2,
+   "ms": 0.1799999713897705
+  },
+  "SOFTMAX_BWD": {
+   "dispatches": 2,
+   "ms": 0.13999996185302735
+  },
+  "TOKEN_INDEX": {
+   "dispatches": 1,
+   "ms": 0.25999999046325684
+  },
+  "EMBED_BWD": {
+   "dispatches": 1,
+   "ms": 0.45999999046325685
+  },
+  "TICK": {
+   "dispatches": 1,
+   "ms": 0.019999980926513672
+  },
+  "LOSS_REDUCE": {
+   "dispatches": 1,
+   "ms": 0.1799999713897705
+  },
+  "ADAMW": {
+   "dispatches": 1,
+   "ms": 0.07999997138977051
+  }
+ },
+ "gemms": [
+  {
+   "phase": "bwd",
+   "wg": 48,
+   "ms": 0.5400000095367432
+  },
+  {
+   "phase": "bwd",
+   "wg": 48,
+   "ms": 0.5399999618530273
+  },
+  {
+   "phase": "bwd",
+   "wg": 68,
+   "ms": 0.5199999809265137
+  },
+  {
+   "phase": "bwd",
+   "wg": 68,
+   "ms": 0.5199999809265137
+  },
+  {
+   "phase": "bwd",
+   "wg": 12,
+   "ms": 0.48000001907348633
+  },
+  {
+   "phase": "bwd",
+   "wg": 80,
+   "ms": 0.48000001907348633
+  },
+  {
+   "phase": "bwd",
+   "wg": 80,
+   "ms": 0.48000001907348633
+  },
+  {
+   "phase": "bwd",
+   "wg": 16,
+   "ms": 0.45999999046325685
+  }
+ ]
+}
