@@ -100,21 +100,54 @@
   }
  },
  "spacing": {
-  "seeds": 61,
-  "stoppedBeforeTheCoarseEvent": [
-   17,
-   23,
-   51
-  ],
-  "sameEventAsStudy": 61,
-  "sameAnchorAsStudy": 61,
-  "gapEvery5": 0.7475728155339806,
-  "gapEvery25": 0.7272727272727273,
-  "pairedMedianDifference": 0.02510822510822508,
-  "eventEvery5": 540.0,
-  "eventEvery25": 575.0,
-  "inEnvelopeEvery5": 0.639344262295082,
-  "inEnvelopeEvery25": 0.39344262295081966
+  "planEventsPast": 75,
+  "asPlanned": {
+   "stoppedBeforeTheCoarseEvent": [
+    17,
+    23,
+    51
+   ],
+   "seeds": 61,
+   "sameEventAsStudy": 61,
+   "sameAnchorAsStudy": 61,
+   "gapEvery5": 0.7475728155339806,
+   "gapEvery25": 0.7272727272727273,
+   "pairedMedianDifference": 0.02510822510822508,
+   "eventEvery5": 540.0,
+   "eventEvery25": 575.0,
+   "inEnvelopeEvery5": 0.639344262295082,
+   "inEnvelopeEvery25": 0.39344262295081966
+  },
+  "extended": {
+   "seeds": [
+    17,
+    23,
+    51
+   ],
+   "stopPast": 400,
+   "fineEvents": [
+    495,
+    540,
+    515
+   ],
+   "coarseEvents": [
+    575,
+    625,
+    625
+   ]
+  },
+  "allSeeds": {
+   "seeds": 64,
+   "sameEventAsStudy": 64,
+   "sameAnchorAsStudy": 64,
+   "gapEvery5": 0.7475728155339806,
+   "gapEvery25": 0.7272727272727273,
+   "pairedMedianDifference": 0.0263749946560643,
+   "eventEvery5": 540.0,
+   "eventEvery25": 575.0,
+   "inEnvelopeEvery5": 0.640625,
+   "inEnvelopeEvery25": 0.375
+  }
  },
  "depth": {
   "(12,4) against (12,12)": {

@@ -22,6 +22,8 @@ const JOBS = {
   'tab-native': { native: true, cfg: tab, seeds: [1, 64], budget: 3000 },
   'saved-run': { cfg: tab, seeds: [1, 1], budget: 3000, stopAfter: 3000 },
   'fine-2-2': { cfg: { ...study, evalEvery: 5 }, seeds: [1, 64], budget: 6000, stopAfter: 75 },
+  // Added after fine-2-2: these three seeds stopped before their coarse event, so 75 steps could not read them at 25-step spacing.
+  'fine-2-2-extra': { cfg: { ...study, evalEvery: 5 }, spans: [[17, 17], [23, 23], [51, 51]], budget: 6000, stopAfter: 400 },
   'crossed-rule-bigram': { cfg: { ...study, ...howe }, seeds: [1, 16], budget: 8000 },
   'crossed-rule-uniform': { cfg: { ...study, pRep: 0.75, rMax: 60 }, seeds: [1, 16], budget: 8000 },
   'crossed-range-uniform': { cfg: { ...study, rMax: 60 }, seeds: [1, 16], budget: 8000 },
@@ -36,11 +38,11 @@ const JOBS = {
 };
 
 const outOf = (name) => path.join(ROOT, 'results', `${name}.jsonl`);
+const spansOf = (job) => job.spans ?? [job.seeds];
 const left = (name) => {
-  const { seeds: [a, b] } = JOBS[name];
   const file = outOf(name);
   const done = fs.existsSync(file) ? fs.readFileSync(file, 'utf8').split('\n').filter(Boolean).length : 0;
-  return b - a + 1 - done;
+  return spansOf(JOBS[name]).reduce((n, [a, b]) => n + b - a + 1, 0) - done;
 };
 
 const [name, maxMinutes] = process.argv.slice(2);
@@ -50,11 +52,13 @@ if (!name || name === 'list') {
 }
 const job = JOBS[name];
 if (!job) throw new Error(`no job ${name}`);
-const span = `${job.seeds[0]}-${job.seeds[1]}`;
-const run = job.native
-  ? ['.venv/bin/python', ['ref/train.py', '--cfg', JSON.stringify(job.cfg), '--seeds', span, '--budget', String(job.budget), '--jobs', '4', '--threads', '2', '--curves', '--out', outOf(name)]]
-  : ['node', ['tools/dynamics.mjs', JSON.stringify(job.cfg), span, String(job.budget), outOf(name), ...(maxMinutes ? [maxMinutes] : [])]];
 const env = { ...process.env, ...(job.stopAfter ? { STOP_AFTER: String(job.stopAfter) } : {}) };
-const res = spawnSync(run[0], run[1], { cwd: ROOT, env, stdio: ['ignore', 'pipe', 'inherit'], encoding: 'utf8', maxBuffer: 1 << 26 });
-console.log(res.stdout.trim().split('\n').slice(-1)[0]);
-process.exit(res.status ?? 1);
+for (const [a, b] of spansOf(job)) {
+  const span = `${a}-${b}`;
+  const run = job.native
+    ? ['.venv/bin/python', ['ref/train.py', '--cfg', JSON.stringify(job.cfg), '--seeds', span, '--budget', String(job.budget), '--jobs', '4', '--threads', '2', '--curves', '--out', outOf(name)]]
+    : ['node', ['tools/dynamics.mjs', JSON.stringify(job.cfg), span, String(job.budget), outOf(name), ...(maxMinutes ? [maxMinutes] : [])]];
+  const res = spawnSync(run[0], run[1], { cwd: ROOT, env, stdio: ['ignore', 'pipe', 'inherit'], encoding: 'utf8', maxBuffer: 1 << 26 });
+  console.log(res.stdout.trim().split('\n').slice(-1)[0]);
+  if (res.status !== 0) process.exit(res.status ?? 1);
+}

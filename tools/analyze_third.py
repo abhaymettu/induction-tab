@@ -61,6 +61,18 @@ def read_every(r, every):
     return ev, an
 
 
+def spacing(fine, seeds, coarse):
+    read25 = {s: read_every(fine[s], 25) for s in seeds}
+    frac5 = np.array([fine[s]["t_pv"] / fine[s]["t_event"] for s in seeds])
+    frac25 = np.array([read25[s][1] / read25[s][0] for s in seeds])
+    return {
+        "seeds": len(seeds), "sameEventAsStudy": sum(read25[s][0] == coarse[s]["t_event"] for s in seeds), "sameAnchorAsStudy": sum(read25[s][1] == coarse[s]["t_pv"] for s in seeds),
+        "gapEvery5": float(np.median(frac5)), "gapEvery25": float(np.median(frac25)), "pairedMedianDifference": float(np.median(frac5 - frac25)),
+        "eventEvery5": float(np.median([fine[s]["t_event"] for s in seeds])), "eventEvery25": float(np.median([read25[s][0] for s in seeds])),
+        "inEnvelopeEvery5": float(np.mean((frac5 >= ENV[0]) & (frac5 <= ENV[1]))), "inEnvelopeEvery25": float(np.mean((frac25 >= ENV[0]) & (frac25 <= ENV[1]))),
+    }
+
+
 def main():
     rng = np.random.default_rng(0)
     out = {}
@@ -90,18 +102,19 @@ def main():
     }
 
     fine = {r["seed"]: r for r in rows("fine-2-2")}
+    extra = {r["seed"]: r for r in rows("fine-2-2-extra")}
     coarse = {r["seed"]: r for r in main_arm}
-    seeds = sorted(fine)
-    read25 = {s: read_every(fine[s], 25) for s in seeds}
-    unread = [s for s in seeds if read25[s][0] is None]
-    seeds = [s for s in seeds if read25[s][0] is not None]
-    frac5 = np.array([fine[s]["t_pv"] / fine[s]["t_event"] for s in seeds])
-    frac25 = np.array([read25[s][1] / read25[s][0] for s in seeds])
+    planned = {s: read_every(fine[s], 25) for s in sorted(fine)}
+    unread = [s for s, (event, _) in planned.items() if event is None]
+    assert sorted(extra) == unread, "the extended runs are exactly the seeds the plan's runs could not read"
+    for s, r in extra.items():
+        kept = fine[s]["curve"]
+        assert (r["t_event"], r["t_pv"]) == (fine[s]["t_event"], fine[s]["t_pv"]) and [c["copyAdv"] for c in r["curve"][: len(kept)]] == [c["copyAdv"] for c in kept], f"seed {s} replays its first run"
     out["spacing"] = {
-        "seeds": len(seeds), "stoppedBeforeTheCoarseEvent": unread, "sameEventAsStudy": sum(read25[s][0] == coarse[s]["t_event"] for s in seeds), "sameAnchorAsStudy": sum(read25[s][1] == coarse[s]["t_pv"] for s in seeds),
-        "gapEvery5": float(np.median(frac5)), "gapEvery25": float(np.median(frac25)), "pairedMedianDifference": float(np.median(frac5 - frac25)),
-        "eventEvery5": float(np.median([fine[s]["t_event"] for s in seeds])), "eventEvery25": float(np.median([read25[s][0] for s in seeds])),
-        "inEnvelopeEvery5": float(np.mean((frac5 >= ENV[0]) & (frac5 <= ENV[1]))), "inEnvelopeEvery25": float(np.mean((frac25 >= ENV[0]) & (frac25 <= ENV[1]))),
+        "planEventsPast": 75,
+        "asPlanned": {"stoppedBeforeTheCoarseEvent": unread, **spacing(fine, [s for s in planned if s not in unread], coarse)},
+        "extended": {"seeds": unread, "stopPast": extra[unread[0]]["steps_run"] - 1 - extra[unread[0]]["t_event"], "fineEvents": [extra[s]["t_event"] for s in unread], "coarseEvents": [read_every(extra[s], 25)[0] for s in unread]},
+        "allSeeds": spacing({**fine, **extra}, sorted(fine), coarse),
     }
 
     long8 = rows("deep-8-1-long")
