@@ -36,12 +36,19 @@ def sample_batch(c, succ, cum, step):
     rows = np.arange(B)
     for t in range(T):
         tok[:, t] = cur
-        x = unit(hash3(seed, data, (base + np.uint64(1 + t)) & M)).astype(np.float32)
-        hits = x[:, None] < cum[cur]
-        slot = np.where(hits.any(axis=1), hits.argmax(axis=1), SLOTS - 1)
-        cur = succ[cur, slot]
+        h = hash3(seed, data, (base + np.uint64(1 + t)) & M)
+        if c["uniform"]:
+            cur = (h % np.uint64(V)).astype(np.int64)
+        else:
+            hits = unit(h).astype(np.float32)[:, None] < cum[cur]
+            slot = np.where(hits.any(axis=1), hits.argmax(axis=1), SLOTS - 1)
+            cur = succ[cur, slot]
     rep = unit(hash3(seed, data, (base + np.uint64(T + 1)) & M)).astype(np.float32) < np.float32(c["pRep"])
     r = c["rMin"] + (hash3(seed, data, (base + np.uint64(T + 2)) & M) % np.uint64(c["rMax"] - c["rMin"])).astype(np.int64)
     for b in rows[rep]:
-        tok[b, r[b]:] = tok[b, : T - r[b]].copy()
+        if c["tile"]:
+            for t in range(r[b], T):
+                tok[b, t] = tok[b, t - r[b]]
+        else:
+            tok[b, r[b]:] = tok[b, : T - r[b]].copy()
     return tok

@@ -6,7 +6,7 @@
 export const DEFAULTS = {
   V: 512, T: 128, d: 128, H: 4, L: 2, unique: 2, mlp: 4, ln: true,
   B: 32, lr: 1e-3, b1: 0.9, b2: 0.95, eps: 1e-8, wd: 0.01, warmup: 100,
-  pRep: 0.75, langSeed: 777, seed: 1, steps: 16000, evalEvery: 25, probeB: 64, probeT: 128,
+  pRep: 0.75, uniform: false, tile: false, langSeed: 777, seed: 1, steps: 16000, evalEvery: 25, probeB: 64, probeT: 128,
 };
 
 export function resolve(cfg) {

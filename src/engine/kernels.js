@@ -8,7 +8,14 @@ export const WG = 64;
 
 // C[z] = alpha * opA(A[z]) @ opB(B[z]) (+ bias from B) (+ beta * D[z]) (+ C[z] when accumulating).
 // z is split as (zo, zi) so one dispatch walks (batch, head) with independent strides.
-export const GEMM = /* wgsl */ `
+// Flag 8 reads A as if it had one more row of ones, which folds the gradient of a bias stored right
+// after its weight matrix into the same matmul.
+// Tile 32 won a direct comparison against 8, 16 and shared-memory-free variants on Metal (scratch bench,
+// see RUNLOG): smaller tiles do less work per barrier and run up to 6x slower.
+export const gemm = (tile, tk = 16) => {
+  const threads = tile / 4;
+  const loads = (tile * tk) / (threads * threads);
+  return /* wgsl */ `
 struct G {
   M: u32, N: u32, K: u32, zInner: u32,
   aOff: u32, aLd: u32, aSo: u32, aSi: u32,
@@ -24,14 +31,14 @@ struct G {
 @group(0) @binding(3) var<storage, read_write> C: array<f32>;
 @group(0) @binding(4) var<storage, read> D: array<f32>;
 
-const TM = 32u;
-const TN = 32u;
-const TK = 16u;
-var<workgroup> As: array<f32, 512>;
-var<workgroup> Bs: array<f32, 512>;
+const TILE = ${tile}u;
+const TK = ${tk}u;
+var<workgroup> As: array<f32, ${tile * tk}>;
+var<workgroup> Bs: array<f32, ${tile * tk}>;
 
 fn loadA(base: u32, m: u32, k: u32) -> f32 {
   if (m >= g.M || k >= g.K) { return 0.0; }
+  if ((g.flags & 8u) != 0u && m == g.M - 1u) { return 1.0; }
   if (g.transA == 1u) { return A[base + k * g.aLd + m]; }
   return A[base + m * g.aLd + k];
 }
@@ -41,7 +48,7 @@ fn loadB(base: u32, k: u32, n: u32) -> f32 {
   return B[base + k * g.bLd + n];
 }
 
-@compute @workgroup_size(8, 8)
+@compute @workgroup_size(${threads}, ${threads})
 fn main(@builtin(workgroup_id) wg: vec3<u32>, @builtin(local_invocation_id) lid: vec3<u32>,
         @builtin(local_invocation_index) li: u32) {
   let zo = wg.z / g.zInner;
@@ -50,21 +57,21 @@ fn main(@builtin(workgroup_id) wg: vec3<u32>, @builtin(local_invocation_id) lid:
   let bBase = g.bOff + zo * g.bSo + zi * g.bSi;
   let cBase = g.cOff + zo * g.cSo + zi * g.cSi;
   let dBase = g.dOff + zo * g.dSo + zi * g.dSi;
-  let m0 = wg.y * TM;
-  let n0 = wg.x * TN;
+  let m0 = wg.y * TILE;
+  let n0 = wg.x * TILE;
   var acc: array<array<f32, 4>, 4>;
   for (var k0 = 0u; k0 < g.K; k0 += TK) {
-    for (var i = 0u; i < 8u; i++) {
-      let e = li + i * 64u;
+    for (var i = 0u; i < ${loads}u; i++) {
+      let e = li + i * ${threads * threads}u;
       if (g.transA == 1u) {
-        As[e] = loadA(aBase, m0 + e % TM, k0 + e / TM);
+        As[e] = loadA(aBase, m0 + e % TILE, k0 + e / TILE);
       } else {
-        As[(e % TK) * TM + e / TK] = loadA(aBase, m0 + e / TK, k0 + e % TK);
+        As[(e % TK) * TILE + e / TK] = loadA(aBase, m0 + e / TK, k0 + e % TK);
       }
       if (g.transB == 1u) {
-        Bs[(e % TK) * TN + e / TK] = loadB(bBase, k0 + e % TK, n0 + e / TK);
+        Bs[(e % TK) * TILE + e / TK] = loadB(bBase, k0 + e % TK, n0 + e / TK);
       } else {
-        Bs[e] = loadB(bBase, k0 + e / TN, n0 + e % TN);
+        Bs[e] = loadB(bBase, k0 + e / TILE, n0 + e % TILE);
       }
     }
     workgroupBarrier();
@@ -72,8 +79,8 @@ fn main(@builtin(workgroup_id) wg: vec3<u32>, @builtin(local_invocation_id) lid:
       var a: array<f32, 4>;
       var b: array<f32, 4>;
       for (var i = 0u; i < 4u; i++) {
-        a[i] = As[kk * TM + lid.y * 4u + i];
-        b[i] = Bs[kk * TN + lid.x * 4u + i];
+        a[i] = As[kk * TILE + lid.y * 4u + i];
+        b[i] = Bs[kk * TILE + lid.x * 4u + i];
       }
       for (var i = 0u; i < 4u; i++) {
         for (var j = 0u; j < 4u; j++) {
@@ -99,6 +106,8 @@ fn main(@builtin(workgroup_id) wg: vec3<u32>, @builtin(local_invocation_id) lid:
   }
 }
 `;
+};
+export const GEMM = gemm(32);
 
 const U32_UNIFORM = (fields) => `struct U { ${fields.map((f) => `${f}: u32`).join(', ')} };
 @group(0) @binding(0) var<uniform> u: U;`;
@@ -119,21 +128,38 @@ fn main(@builtin(global_invocation_id) id: vec3<u32>) {
 }
 `;
 
-// One invocation per table row: dwte[v] += sum_{n: tok[n] = v} dX[n];  dwpe[t] += sum_b dX[b*T + t]
+// head[v] and next[n] chain the rows holding each token, so the embedding gradient walks only those rows.
+export const TOKEN_INDEX = /* wgsl */ `
+${U32_UNIFORM(['rows', 'V', 'p0', 'p1'])}
+@group(0) @binding(1) var<storage, read> tok: array<u32>;
+@group(0) @binding(2) var<storage, read_write> head: array<u32>;
+@group(0) @binding(3) var<storage, read_write> nxt: array<u32>;
+@compute @workgroup_size(1)
+fn main() {
+  for (var v = 0u; v < u.V; v++) { head[v] = 0xffffffffu; }
+  for (var n = 0u; n < u.rows; n++) {
+    let v = tok[n];
+    nxt[n] = head[v];
+    head[v] = n;
+  }
+}
+`;
+
 export const EMBED_BWD = /* wgsl */ `
 ${U32_UNIFORM(['rows', 'T', 'd', 'wte', 'wpe', 'V', 'p0', 'p1'])}
 @group(0) @binding(1) var<storage, read_write> Gr: array<f32>;
-@group(0) @binding(2) var<storage, read> tok: array<u32>;
-@group(0) @binding(3) var<storage, read> dX: array<f32>;
+@group(0) @binding(2) var<storage, read> head: array<u32>;
+@group(0) @binding(3) var<storage, read> nxt: array<u32>;
+@group(0) @binding(4) var<storage, read> dX: array<f32>;
 @compute @workgroup_size(${WG})
 fn main(@builtin(global_invocation_id) id: vec3<u32>) {
   let i = id.x;
   if (i < u.V) {
     let out = u.wte + i * u.d;
-    for (var n = 0u; n < u.rows; n++) {
-      if (tok[n] == i) {
-        for (var c = 0u; c < u.d; c++) { Gr[out + c] += dX[n * u.d + c]; }
-      }
+    var n = head[i];
+    while (n != 0xffffffffu) {
+      for (var c = 0u; c < u.d; c++) { Gr[out + c] += dX[n * u.d + c]; }
+      n = nxt[n];
     }
   } else if (i < u.V + u.T) {
     let t = i - u.V;
@@ -374,21 +400,6 @@ fn main() {
 }
 `;
 
-// G[off + c] += sum_r dY[r, c]: the gradient of a bias added to every row.
-export const BIAS_BWD = /* wgsl */ `
-${U32_UNIFORM(['rows', 'w', 'off', 'p0'])}
-@group(0) @binding(1) var<storage, read_write> Gr: array<f32>;
-@group(0) @binding(2) var<storage, read> dY: array<f32>;
-@compute @workgroup_size(${WG})
-fn main(@builtin(global_invocation_id) id: vec3<u32>) {
-  let c = id.x;
-  if (c >= u.w) { return; }
-  var s = 0.0;
-  for (var r = 0u; r < u.rows; r++) { s += dY[r * u.w + c]; }
-  Gr[u.off + c] += s;
-}
-`;
-
 // Y[n] (+)= X[n], used where a layer has no LayerNorm in its backward path.
 export const ADD = /* wgsl */ `
 ${U32_UNIFORM(['n', 'acc', 'p1', 'p2'])}
@@ -402,18 +413,19 @@ fn main(@builtin(global_invocation_id) id: vec3<u32>) {
 `;
 
 // A training batch, drawn on the GPU from the step counter so a whole chunk of steps needs no CPU.
-// Sequences follow the bigram table. With probability pRep the sequence repeats itself from a random
-// offset r: positions r..T-1 take the original tokens 0..T-1-r (2609.19000's clone rule, in place
-// walking down so sources are read before they are overwritten).
+// Sequences follow the bigram table, or are uniform random tokens when u.uniform is set. With probability pRep
+// the sequence repeats from a random offset r: positions r..T-1 take the original tokens 0..T-1-r
+// (2609.19000's clone rule, walking down so sources are read before they are overwritten), or with u.tile
+// the sequence becomes periodic with period r (walking up, so copies are copied again).
 export const DATA = /* wgsl */ `
-struct U { B: u32, T: u32, V: u32, K: u32, seed: u32, rMin: u32, rMax: u32, stream: u32, pRep: f32, p0: f32, p1: f32, p2: f32 };
+struct U { B: u32, T: u32, V: u32, K: u32, seed: u32, rMin: u32, rMax: u32, stream: u32, pRep: f32, uniform: u32, tile: u32, p2: f32 };
 @group(0) @binding(0) var<uniform> u: U;
 @group(0) @binding(1) var<storage, read> succ: array<u32>;
 @group(0) @binding(2) var<storage, read> cum: array<f32>;
 @group(0) @binding(3) var<storage, read_write> tok: array<u32>;
 @group(0) @binding(4) var<storage, read> state: array<u32>;
 ${PRNG_WGSL}
-@compute @workgroup_size(${WG})
+@compute @workgroup_size(1)
 fn main(@builtin(global_invocation_id) id: vec3<u32>) {
   let b = id.x;
   if (b >= u.B) { return; }
@@ -422,21 +434,30 @@ fn main(@builtin(global_invocation_id) id: vec3<u32>) {
   var cur = hash3(u.seed, u.stream, base) % u.V;
   for (var t = 0u; t < u.T; t++) {
     tok[seq + t] = cur;
-    let x = unit(hash3(u.seed, u.stream, base + 1u + t));
-    var slot = 0u;
-    loop {
-      if (slot == u.K - 1u || x < cum[cur * u.K + slot]) { break; }
-      slot += 1u;
+    let h = hash3(u.seed, u.stream, base + 1u + t);
+    if (u.uniform == 1u) {
+      cur = h % u.V;
+    } else {
+      let x = unit(h);
+      var slot = 0u;
+      loop {
+        if (slot == u.K - 1u || x < cum[cur * u.K + slot]) { break; }
+        slot += 1u;
+      }
+      cur = succ[cur * u.K + slot];
     }
-    cur = succ[cur * u.K + slot];
   }
   if (unit(hash3(u.seed, u.stream, base + u.T + 1u)) < u.pRep) {
     let r = u.rMin + hash3(u.seed, u.stream, base + u.T + 2u) % (u.rMax - u.rMin);
-    var t = u.T;
-    loop {
-      t -= 1u;
-      if (t < r) { break; }
-      tok[seq + t] = tok[seq + t - r];
+    if (u.tile == 1u) {
+      for (var t = r; t < u.T; t++) { tok[seq + t] = tok[seq + t - r]; }
+    } else {
+      var t = u.T;
+      loop {
+        t -= 1u;
+        if (t < r) { break; }
+        tok[seq + t] = tok[seq + t - r];
+      }
     }
   }
 }

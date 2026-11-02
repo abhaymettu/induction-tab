@@ -49,9 +49,9 @@ class Graph {
     return index;
   }
 
-  gemm(phase, { A, B, C, D, M, N, K: KK, a = {}, b = {}, c = {}, d = {}, zCount = 1, zInner = 1, alpha = 1, beta = 1, bias = -1, acc = false }) {
+  gemm(phase, { A, B, C, D, M, N, K: KK, a = {}, b = {}, c = {}, d = {}, zCount = 1, zInner = 1, alpha = 1, beta = 1, bias = -1, acc = false, ones = false }) {
     const v = (o) => [o.off ?? 0, o.ld ?? 1, o.so ?? 0, o.si ?? 0];
-    const flags = (D ? 1 : 0) | (bias >= 0 ? 2 : 0) | (acc ? 4 : 0);
+    const flags = (D ? 1 : 0) | (bias >= 0 ? 2 : 0) | (acc ? 4 : 0) | (ones ? 8 : 0);
     const fields = [M, N, KK, zInner, ...v(a), ...v(b), ...v(c), ...v(d), a.trans ? 1 : 0, b.trans ? 1 : 0, flags, Math.max(bias, 0), { f: alpha }, { f: beta }, 0, 0];
     this.op(phase, 'GEMM', fields, [A, B, C, D ?? A], Math.ceil(N / 32), Math.ceil(M / 32), zCount);
   }
@@ -181,12 +181,10 @@ function buildNet(g, ctx, { B, T, tok, withGrad, phase = 'fwd' }) {
     const y = layers[l];
     const p = y.p;
     if (c.mlp) {
-      g.gemm(bwd, { A: y.Gl, B: dStream, C: G, M: f, N: d, K: N, a: { ld: f, trans: 1 }, b: { ld: d }, c: { off: by[p + 'w2'].off, ld: d }, acc });
-      g.op(bwd, 'BIAS_BWD', [N, d, by[p + 'b2'].off], [G, dStream], groups(d));
+      g.gemm(bwd, { A: y.Gl, B: dStream, C: G, M: f + 1, N: d, K: N, a: { ld: f, trans: 1 }, b: { ld: d }, c: { off: by[p + 'w2'].off, ld: d }, acc, ones: true });
       g.gemm(bwd, { A: dStream, B: P, C: dG, M: N, N: f, K: d, a: { ld: d }, b: { off: by[p + 'w2'].off, ld: d, trans: 1 }, c: { ld: f } });
       g.op(bwd, 'GELU_BWD', [N, f], [y.H1, dG], groups(N));
-      g.gemm(bwd, { A: y.n2.out, B: dG, C: G, M: d, N: f, K: N, a: { ld: d, trans: 1 }, b: { ld: f }, c: { off: by[p + 'w1'].off, ld: f }, acc });
-      g.op(bwd, 'BIAS_BWD', [N, f, by[p + 'b1'].off], [G, dG], groups(f));
+      g.gemm(bwd, { A: y.n2.out, B: dG, C: G, M: d + 1, N: f, K: N, a: { ld: d, trans: 1 }, b: { ld: f }, c: { off: by[p + 'w1'].off, ld: f }, acc, ones: true });
       g.gemm(bwd, { A: dG, B: P, C: dNorm, M: N, N: d, K: f, a: { ld: f }, b: { off: by[p + 'w1'].off, ld: f, trans: 1 }, c: { ld: d } });
       intoStream(y.n2, y.xMid);
     }
@@ -201,11 +199,14 @@ function buildNet(g, ctx, { B, T, tok, withGrad, phase = 'fwd' }) {
     g.gemm(bwd, { A: dQKV, B: P, C: dNorm, M: N, N: d, K: 3 * d, a: { ld: 3 * d }, b: { off: by[p + 'wqkv'].off, ld: 3 * d, trans: 1 }, c: { ld: d } });
     intoStream(y.n1, y.xIn);
   }
-  g.op(bwd, 'EMBED_BWD', [N, T, d, by.wte.off, by.wpe.off, V], [G, tok, dStream], groups(V + T));
+  const head1 = buf(V);
+  const nxt = buf(N);
+  g.op(bwd, 'TOKEN_INDEX', [N, V], [tok, head1, nxt], 1);
+  g.op(bwd, 'EMBED_BWD', [N, T, d, by.wte.off, by.wpe.off, V], [G, head1, nxt, dStream], groups(V + T));
   return { layers, logits, lossBuf, N, B, T, forwardEnd };
 }
 
-const KERNELS = ['GEMM', 'EMBED_FWD', 'EMBED_BWD', 'SOFTMAX_FWD', 'SOFTMAX_BWD', 'LN_FWD', 'LN_BWD_X', 'LN_BWD_P', 'GELU_FWD', 'GELU_BWD', 'XENT', 'LOSS_REDUCE', 'BIAS_BWD', 'ADD', 'DATA', 'PROBE_SCORE', 'PROBE_CE', 'ADAMW', 'TICK'];
+const KERNELS = ['GEMM', 'TOKEN_INDEX', 'EMBED_FWD', 'EMBED_BWD', 'SOFTMAX_FWD', 'SOFTMAX_BWD', 'LN_FWD', 'LN_BWD_X', 'LN_BWD_P', 'GELU_FWD', 'GELU_BWD', 'XENT', 'LOSS_REDUCE', 'ADD', 'DATA', 'PROBE_SCORE', 'PROBE_CE', 'ADAMW', 'TICK'];
 
 export async function createTrainer(device, cfg) {
   const c = resolve(cfg);
@@ -240,8 +241,8 @@ export async function createTrainer(device, cfg) {
 
   const train = new Graph(device, pipelines);
   const tok = buf(c.B * c.T);
-  const dataFields = [c.B, c.T, c.V, SLOTS, c.seed, c.rMin, c.rMax, STREAM.data, { f: c.pRep }];
-  const dataIndex = train.op('data', 'DATA', dataFields, [succ, cum, tok, state], groups(c.B));
+  const dataFields = [c.B, c.T, c.V, SLOTS, c.seed, c.rMin, c.rMax, STREAM.data, { f: c.pRep }, c.uniform ? 1 : 0, c.tile ? 1 : 0];
+  const dataIndex = train.op('data', 'DATA', dataFields, [succ, cum, tok, state], c.B);
   const net = buildNet(train, ctx, { B: c.B, T: c.T, tok, withGrad: true });
   train.op('tick', 'TICK', [1], [state], 1);
   train.op('loss', 'LOSS_REDUCE', [net.N, c.T, HIST_CAP], [net.lossBuf, hist, state], 1);
