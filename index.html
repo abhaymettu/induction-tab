@@ -58,7 +58,7 @@
       <div class="mapfoot">
         <p class="explain" id="explain" aria-live="polite"></p>
         <div class="silence" id="silence">
-          <p>Click a head to silence it. Silence all of layer 0 or all of layer 1 and copying dies.</p>
+          <p>Press a head to silence it. Silence all of layer 0 or all of layer 1 and copying dies.</p>
           <div class="silence-buttons">
             <button type="button" class="quiet" data-layer="0">Layer 0</button>
             <button type="button" class="quiet" data-layer="1">Layer 1</button>
@@ -80,8 +80,8 @@
 <section class="after" id="after">
   <div class="after-grid">
     <div>
-      <h2 id="resultHead">Run it again.</h2>
-      <p id="resultBody">Each seed starts from different weights. The event moves, the shape of the transition does not.</p>
+      <h2 id="resultHead">Try another seed.</h2>
+      <p id="resultBody">Each seed starts from different weights. On an M4 Pro, seeds 1 to 5 reached the event between step 425 and step 600.</p>
     </div>
     <div class="after-actions">
       <button type="button" class="solid" id="again">Run again with a new seed</button>
@@ -121,18 +121,18 @@
       </figure>
     </div>
     <div>
-      <p>That is the whole trick: find where this character came before, read what followed, say that. It takes two heads, one stacked on the other. A head in layer 0 reads the previous character, so every position also carries what came just before it. A head in layer 1 then asks, at each position, where was the previous character the same as mine? It attends there and copies what it finds.</p>
+      <p>It finds where this character came before, reads what followed and says that. This takes two heads, one stacked on the other. A head in layer 0 reads the previous character, so every position also carries what came just before it. A head in layer 1 then asks, at each position, where was the previous character the same as mine? It attends there and copies what it finds.</p>
       <p>You can see both in the maps. Each row of a map is a position reading and each column a position being read, so the empty upper right is the future, which no head may read. The previous-character head draws a line just under the main diagonal. The induction head draws a parallel line 63 positions below it, in the lower half, because the earlier copy of a character is 64 back and the thing to read is one after that.</p>
-      <p>Layer 0 heads reach a previous-character score around 0.5. Layer 1 heads reach a prefix-matching score of 0.6 to 0.7. This is the circuit Olsson et al. described in 2022. With one layer there is nothing beneath the head to say what came before each position, and an earlier, smaller configuration with one layer showed no event in 7000 steps.</p>
+      <p>In the run saved with this page, seed 1 at step 3000, one head in layer 0 has a previous-character score of 0.98 and the four heads in layer 1 have prefix-matching scores from 0.87 to 0.94. This is the circuit Olsson et al. described in 2022. With one layer there is nothing beneath the head to say what came before each position.</p>
       <p>The circuit is also why it stumbles, because it matches on the previous character only. Look at the last column of the lower row, which stays dark. The <code>4</code> before it appears three times in the first pass, followed by <code>Z</code>, <code>U</code> and <code>b</code>, and on seed 1 at step 3000 the model says <code>Z</code> at nearly 100%. The first column stays dark for a simpler reason: the <code>b</code> before it has never been seen.</p>
-      <p>Prompts go the same way. Where every character has one possible successor it is clean, so <code>abcabcabcabcab</code> gave <code>cabcabc</code> and <code>qwertyuiop[] qwertyu</code> gave <code>iop[] qwertyuiop</code> after 1800 steps. But <code>the quick brown fox. the quick br</code> gave <code>ox. brox. quick</code>. Read that one character at a time and every step is a real pair from the prompt: <code>o</code> was followed by <code>x</code>, and a space was followed by <code>b</code>. It has no memory of where it was.</p>
+      <p>Prompts go the same way. Where every character has one possible successor it is clean, so <code>abcabcabcabcab</code> gives <code>cabcabc</code>. After 1800 steps, <code>the quick brown fox. the quick br</code> gave <code>ox. brox. quick</code>. Read that one character at a time and every step is a real pair from the prompt: <code>o</code> was followed by <code>x</code>, and a space was followed by <code>b</code>. By step 3000 on seed 1 it gets that prompt right, <code>own fox. the quick brown</code>, and it still misses the <code>4</code> above.</p>
     </div>
   </section>
 
   <section>
     <h2>Why this is a phase change</h2>
     <div>
-      <p>On the first pass through a random sequence the best possible loss is chance, ln 96 = 4.56 nats, however long you train. So the difference between the first pass and the second measures copying alone. That difference is the copy advantage. It stays near zero while the model is learning nothing that helps, and then it moves all at once: 0.24, 0.36, 1.72, 2.33 across four evals, 25 steps apart, in one run.</p>
+      <p>On the first pass through a random sequence the best possible loss is chance, ln 96 = 4.56 nats, however long you train. So the difference between the first pass and the second measures copying alone. That difference is the copy advantage. In the saved run it creeps up to 0.33 by step 350, reaches 1.73 by step 425 and stays above 2 from step 475. The remaining 2500 steps take it to 4.59.</p>
       <p>The instruments come from Howe, arXiv 2609.19000. The event is copy advantage at or above 2 nats on two consecutive evals, reported at the second. The precursor is the first time a first-layer head reaches a previous-character score of 0.10. The prefix-matching score is the induction head's own signature.</p>
     </div>
   </section>
@@ -140,7 +140,7 @@
   <section>
     <h2>What correct means here</h2>
     <div>
-      <p>The trainer is raw WGSL. The forward pass, the backward pass and AdamW are written by hand, with no ML library underneath. <code>npm run parity</code> checks the gradient of every parameter tensor against PyTorch autograd, and they agree to about 1e-6 relative L2. So what ran on your GPU is the same mathematics, not an approximation of it.</p>
+      <p>The trainer is raw WGSL. The forward pass, the backward pass and AdamW are written by hand, with no ML library underneath. <code>npm run parity</code> checks the gradient of every parameter tensor against PyTorch autograd, and they agree to about 1e-6 relative L2. So what ran on your GPU computes the gradients PyTorch would.</p>
       <p>The configuration is 96 printable ASCII characters, 128 characters of context, width 128, 4 heads, 2 layers, batch 16. It trains only on uniform random characters made periodic.</p>
     </div>
   </section>
@@ -149,7 +149,7 @@
     <h2>What did not work</h2>
     <div>
       <p>The synthetic bigram language from Howe's paper showed no signal in a tiny model, 8000 steps at width 64, context 64, batch 16. That is why this tab trains on random characters repeating with a period between 4 and 64, which puts all the pressure on copying.</p>
-      <p>A single layer does not get there. Long prompts with repeated letters still confuse it, as above, because that is what this circuit computes.</p>
+      <p>An earlier, smaller configuration with one layer showed no event in 7000 steps.</p>
     </div>
   </section>
 

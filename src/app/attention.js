@@ -222,9 +222,12 @@ export function createMaps(root, { canvas: firstCanvas, explain, T, H, L, onSile
       root.append(b);
       row.push({ el: b, label, job: null });
       const info = () => headText(l, h);
-      b.addEventListener('pointerenter', (e) => { if (e.pointerType === 'mouse') explain.textContent = info(); });
-      b.addEventListener('focus', () => { explain.textContent = info(); });
-      b.addEventListener('pointerleave', () => { explain.textContent = ''; });
+      // On a phone the words sit in the flow, so changing them on blur would move the buttons under a finger.
+      const floating = (text) => { if (getComputedStyle(explain).position === 'absolute') explain.textContent = text; };
+      b.addEventListener('pointerenter', (e) => { if (e.pointerType === 'mouse') floating(info()); });
+      b.addEventListener('focus', () => floating(info()));
+      b.addEventListener('pointerleave', () => floating(''));
+      b.addEventListener('blur', () => floating(''));
       b.addEventListener('click', () => {
         if (getEnabled()) toggle(l, 1 << h);
         explain.textContent = info();
@@ -238,7 +241,7 @@ export function createMaps(root, { canvas: firstCanvas, explain, T, H, L, onSile
     const where = `Layer ${l}, head ${h + 1}.`;
     const job = heads[l][h].job;
     const score = scores[l]?.[h];
-    const tail = getEnabled() ? (masks[l] >> h & 1 ? ' Click to bring it back.' : ' Click to silence it.') : '';
+    const tail = getEnabled() ? (masks[l] >> h & 1 ? ' Press to bring it back.' : ' Press to silence it.') : '';
     if (masks[l] >> h & 1) return `${where} Silenced for the probe and the text box. Training never sees this.${tail}`;
     if (!score) return `${where} No readings yet.`;
     if (job) return `${where} It ${JOBS[job].short}: ${pct(score[JOBS[job].metric])} ${JOBS[job].why}.${tail}`;

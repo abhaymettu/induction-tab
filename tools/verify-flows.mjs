@@ -1,6 +1,6 @@
 // Everything the main run does not reach: pause and new seed, hover and keyboard, the benchmark and its log, the
 // records and study sections with data in them, reduced motion, and other window sizes.
-// `node tools/verify-flows.mjs [controls] [bench] [data] [motion] [sizes]`, all of them with no arguments.
+// `node tools/verify-flows.mjs [controls] [touch] [pages] [bench] [data] [motion] [sizes]`, all with no arguments.
 import { chromium } from 'playwright';
 import path from 'node:path';
 import assert from 'node:assert/strict';
@@ -20,7 +20,7 @@ const stepOf = async (page) => Number((await page.textContent('#sub')).match(/St
 // The mark is drawn once the chart's eased head reaches the event, a moment after the event itself.
 const eventStep = async (page) => {
   const handle = await page.waitForFunction(() => {
-    const words = [...document.querySelectorAll('.curve-svg .mark')].map((m) => m.textContent);
+    const words = [...document.querySelectorAll('.curve-svg .mark')].filter((m) => m.style.display !== 'none').map((m) => m.textContent);
     return words.find((w) => w.startsWith('event'))?.match(/step (\d+)/)?.[1];
   }, null, { timeout: 5000 });
   return Number(await handle.jsonValue());
@@ -58,6 +58,7 @@ try {
     const heldClock = await clock(page);
     await page.waitForTimeout(250);
     const heldStep = await stepOf(page);
+    const heldWords = await page.textContent('#sub');
     await page.waitForTimeout(700);
     assert.equal(await clock(page), heldClock, 'the clock holds while paused');
     assert.equal(await stepOf(page), heldStep, 'training holds while paused');
@@ -102,6 +103,10 @@ try {
     await page.click('#reseed');
     await phaseIs(page, 'training');
     assert.match(await page.textContent('#sub'), /Seed \d+\. Step 0/);
+    await page.waitForFunction((n) => document.getElementById('sub').textContent.startsWith(`Step ${n} of`), heldStep);
+    const newWords = await page.textContent('#sub');
+    assert.notEqual(newWords, heldWords, 'a new seed trains from different weights');
+    console.log(`same step, two seeds: "${heldWords}" and "${newWords}"`);
     assert.ok(!(await page.evaluate(() => 'arrived' in document.documentElement.dataset)), 'a new seed starts before the event');
     assert.equal(await page.inputValue('#box'), '', 'a new seed clears the prompt');
     await arrived(page);
@@ -109,8 +114,62 @@ try {
     const sentence = await page.textContent('#say');
     assert.match(sentence, /^Induction in \d+\.\d seconds on your/);
     console.log(`new seed while paused: event at step ${second}. ${sentence}`);
+
+    await page.locator('#after').scrollIntoViewIfNeeded();
+    await page.click('#again');
+    await page.waitForFunction(() => !('arrived' in document.documentElement.dataset));
+    await page.waitForFunction(() => scrollY === 0, null, { timeout: 3000 });
+    assert.equal(await page.getAttribute('html', 'data-phase'), 'training');
+    console.log('run again goes back to the top and trains');
+
+    await page.locator('#after').scrollIntoViewIfNeeded();
+    await page.click('#benchBtn');
+    await phaseIs(page, 'bench');
+    assert.equal(await page.isDisabled('#reseed'), true, 'nothing else can start during the benchmark');
+    assert.equal(await page.isDisabled('#box'), true, 'the box waits during the benchmark');
+    await page.waitForFunction(() => !document.getElementById('benchOut').hidden, null, { timeout: 180000 });
+    console.log('benchmark from the button, mid-run:', await page.textContent('#benchMedian'));
+    await page.click('#again');
+    await arrived(page);
+    console.log('and a normal run after it:', await page.textContent('#say'));
     assert.deepEqual(errors, []);
     await context.close();
+  }
+
+  if (want('touch')) {
+    const { context, page, errors } = await open({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
+    await phaseIs(page, 'ready');
+    await page.tap('#start');
+    await arrived(page);
+    await page.locator('.head').nth(5).tap();
+    await page.waitForFunction(() => document.querySelector('.head[aria-pressed="true"]'));
+    const said = await page.textContent('#explain');
+    assert.ok(said.startsWith('Layer 1, head 2'), `a tap explains: ${said}`);
+    await page.locator('[data-layer="1"]').tap();
+    await page.waitForFunction(() => document.querySelector('[data-layer="1"]').getAttribute('aria-pressed') === 'true');
+    await page.locator('#restore').tap();
+    await page.waitForFunction(() => !document.querySelector('.head[aria-pressed="true"]'));
+    await page.locator('.head').nth(5).scrollIntoViewIfNeeded();
+    await page.waitForTimeout(100);
+    await page.screenshot({ path: `${SHOTS}/tapped-390-dark.png` });
+    assert.deepEqual(errors, []);
+    console.log('touch: a tap explains and silences, and the layer buttons stay reachable under the explanation');
+    await context.close();
+  }
+
+  if (want('pages')) {
+    const parent = await serve(path.dirname(ROOT));
+    const context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
+    const page = await context.newPage();
+    const missing = [];
+    page.on('response', (r) => { if (r.status() >= 400) missing.push(new URL(r.url()).pathname); });
+    await page.goto(`${parent.url}/${path.basename(ROOT)}/`);
+    await phaseIs(page, 'ready');
+    await page.waitForFunction(() => !document.getElementById('recordsEmpty').hidden);
+    assert.deepEqual(missing, [`/${path.basename(ROOT)}/results/study-summary.json`], 'under a project path only the optional file is absent');
+    console.log('served from a project path as on GitHub Pages:', missing.join(' '), 'is the one missing file, as intended');
+    await context.close();
+    parent.close();
   }
 
   if (want('bench')) {

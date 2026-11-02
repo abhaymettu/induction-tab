@@ -36,6 +36,7 @@ const setPhase = (p) => {
   root.dataset.phase = p;
   $('pause').textContent = p === 'paused' ? 'Resume' : 'Pause';
   $('pause').hidden = p === 'done' || p === 'bench';
+  $('reseed').disabled = p === 'bench';
   $('again').disabled = p === 'bench';
   $('benchBtn').disabled = p === 'bench';
   $('benchBtn').style.display = source?.kind === 'recording' ? 'none' : '';
@@ -180,14 +181,14 @@ function onEvent({ seconds }) {
   setArrived(true);
   lastChipStep = lastFrame.step;
   paintClock();
-  if (lastFrame) narrate(lastFrame);
+  narrate(lastFrame);
   steer.setEnabled(true, placeholders().after);
   $('hint').textContent = 'Measuring which prompts it can continue.';
   setTimeout(() => steer.measureChips(), 600);
   $('resultHead').textContent = resultSentence(seconds);
   $('resultBody').textContent = source.kind === 'recording'
     ? 'That number belongs to the recorded machine. A browser with WebGPU would measure its own.'
-    : 'Each seed starts from different weights. The event moves, the shape of the transition does not.';
+    : 'Each seed starts from different weights, so the event lands somewhere else. New seed tries one at random.';
   kick();
 }
 
@@ -327,10 +328,10 @@ function onHover(info) {
 async function runBench() {
   if (!source || source.kind !== 'live') return;
   const runs = [];
-  if (phase === 'ready' || phase === 'boot') $('live').scrollIntoView();
   resetView();
   maps.renderer?.clear();
   setPhase('bench');
+  steer.setEnabled(false, placeholders().closed);
   $('benchOut').hidden = true;
   $('after').scrollIntoView({ block: 'start' });
   for (const seed of BENCH_SEEDS) {

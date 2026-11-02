@@ -60,7 +60,7 @@ try {
       await page.fill('#box', 'abcabcabcabcab');
       await page.waitForFunction(() => document.querySelectorAll('#ghost .g').length >= 24, null, { timeout: 10000 });
       await page.waitForTimeout(1200);
-      await page.screenshot({ path: `${SHOTS}/typed-390-${scheme}.png`, fullPage: true });
+      await page.screenshot({ path: `${SHOTS}/typed-390-${scheme}.png` });
       const overflow = await page.evaluate(() => document.documentElement.scrollWidth - innerWidth);
       console.log(`390 ${scheme}: horizontal overflow ${overflow}`);
       await context.close();

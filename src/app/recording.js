@@ -95,12 +95,8 @@ export async function createRecording(on) {
   function stopAtEnd() {
     clearTimeout(timer);
     if (finished) return;
-    while (index < meta.evals.length) {
-      const ev = meta.evals[index];
-      if (index === meta.evals.length - 1) { show(index); }
-      index += 1;
-      void ev;
-    }
+    show(meta.evals.length - 1);
+    index = meta.evals.length;
     finished = true;
     on.finished({ steps: meta.evals[meta.evals.length - 1].step + 1, gotEvent: true });
   }
