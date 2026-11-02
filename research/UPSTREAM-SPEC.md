@@ -177,7 +177,7 @@ The baseline uses the logged single-batch `train_loss` at eval steps, not a held
 
 ## 5. Per-seed results for the 30 config A positives
 
-Copied verbatim to `research/upstream/r2_scored.json`. The source is `mem-gen-delay/analysis/out6/r2_scored.json` at HEAD `493c4bf`, last changed in f25aa45. Git blob `4401c2fc89c48e3d35eef0b7587f3c1ab1e40e4f` matches the local copy. `paper4/gen_numbers.py:29` reads the paper's fleet numbers from this file.
+Not copied here, because the file carries no license. The source is `mem-gen-delay/analysis/out6/r2_scored.json` at HEAD `493c4bf`, last changed in f25aa45. Git blob `4401c2fc89c48e3d35eef0b7587f3c1ab1e40e4f` matches the local copy. `paper4/gen_numbers.py:29` reads the paper's fleet numbers from this file.
 
 Check. I downloaded all 45 `runs/grid6r2/*/metrics.jsonl` and `summary.json` files at `493c4bf` (5.2 MB, in the scratchpad, not copied) and reran the event, t_pv and t_ind rules. All 30 positives match this file. All 30 summaries log the config in sections 1 and 2. The norep layer-0 prevtok maxima and onelayer prefix maxima also match.
 
