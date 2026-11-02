@@ -1,0 +1,6 @@
+node_modules/
+.venv/
+scratch/
+__pycache__/
+.remember/
+*.pyc
