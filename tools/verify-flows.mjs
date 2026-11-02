@@ -165,9 +165,12 @@ try {
     page.on('response', (r) => { if (r.status() >= 400) missing.push(new URL(r.url()).pathname); });
     await page.goto(`${parent.url}/${path.basename(ROOT)}/`);
     await phaseIs(page, 'ready');
-    await page.waitForFunction(() => !document.getElementById('recordsEmpty').hidden);
-    assert.deepEqual(missing, [`/${path.basename(ROOT)}/results/study-summary.json`], 'under a project path only the optional file is absent');
-    console.log('served from a project path as on GitHub Pages:', missing.join(' '), 'is the one missing file, as intended');
+    await page.waitForSelector('#recordsTable tbody tr');
+    await page.waitForSelector('#studyTable tbody tr');
+    await page.evaluate(() => document.fonts.ready);
+    assert.deepEqual(missing, [], 'under a project path every file resolves');
+    assert.deepEqual(await page.evaluate(() => [...document.fonts].filter((f) => f.status === 'error').length), 0, 'no font face failed under a project path');
+    console.log('served from a project path as on GitHub Pages: every file resolves, fonts included');
     await context.close();
     parent.close();
   }
@@ -218,20 +221,10 @@ try {
       { adapter: 'apple metal-3', browser: 'Chrome 141', medianSeconds: 6.62, seeds: 5, submitter: 'someone', log: 'https://github.com/abhaymettu/induction-tab/issues/1' },
       { adapter: 'intel gen-12lp', browser: 'Edge 140', medianSeconds: 31.7, seeds: 5, submitter: 'someone else', log: 'https://github.com/abhaymettu/induction-tab/issues/2' },
     ];
-    const curve = (start, end) => Array.from({ length: 41 }, (_, i) => {
-      const s = i * 100;
-      return [s, s < start ? 1 : s > end ? 0 : +(1 - (s - start) / (end - start)).toFixed(3)];
-    });
-    const study = { arms: [
-      { label: 'width 128, 2 layers', n: 20, events: 20, medianStep: 475, ci: [425, 525], curve: curve(300, 800) },
-      { label: 'width 64, 2 layers', n: 20, events: 17, medianStep: 1300, ci: [1100, 1700], curve: curve(800, 2600) },
-      { label: 'width 128, 1 layer', n: 20, events: 0, medianStep: null, ci: [null, null], curve: [[0, 1], [4000, 1]] },
-    ] };
     for (const [width, height, name] of [[1440, 900, '1440'], [390, 844, '390']]) {
       const context = await browser.newContext({ viewport: { width, height }, colorScheme: 'dark', deviceScaleFactor: 2 });
       const page = await context.newPage();
       await page.route('**/records.json', (r) => r.fulfill({ json: records }));
-      await page.route('**/results/study-summary.json', (r) => r.fulfill({ json: study }));
       await page.goto(`${srv.url}/`);
       await phaseIs(page, 'ready');
       await page.waitForSelector('#recordsTable tbody tr');
@@ -242,8 +235,12 @@ try {
       assert.equal(await page.$$eval('#recordsTable a', (n) => n.length), 2, 'a javascript: link is dropped');
       assert.equal(await page.isVisible('#recordsEmpty'), false);
       assert.equal(await page.isVisible('#study'), true);
-      assert.equal(await page.$$eval('#studyFig path.km', (n) => n.length), 3);
-      assert.equal(await page.$$eval('#studyTable tbody tr', (n) => n.length), 3);
+      await page.waitForSelector('#studyTable tbody tr');
+      assert.equal(await page.$$eval('#studyCurriculum path.km', (n) => n.length), 4);
+      assert.equal(await page.$$eval('#studyForest circle', (n) => n.length), 12);
+      assert.match(await page.textContent('#studyForest'), /8 layers, 1 block.*no (prefix )?signature.*7150/);
+      assert.equal(await page.$$eval('#studyTable tbody tr', (n) => n.length), 10);
+      assert.match(await page.textContent('#studyTable'), /12 layers, 4 blocks against 12fit 1\.75 \(1\.68 to 1\.8\d\)KM 1\.74 \(1\.63 to 1\.87\)not run/);
       const over = await page.evaluate(() => document.documentElement.scrollWidth - innerWidth);
       assert.equal(over, 0, `no sideways scroll at ${width}`);
       await page.locator('#study').screenshot({ path: `${SHOTS}/study-${name}-dark.png` });
@@ -251,7 +248,11 @@ try {
       console.log(`${width}: records sorted and escaped, study drawn, overflow ${over}`);
       await context.close();
     }
-    const { context, page } = await open();
+    const context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
+    const page = await context.newPage();
+    await page.route('**/records.json', (r) => r.fulfill({ status: 404, body: '' }));
+    await page.route('**/results/study-summary.json', (r) => r.fulfill({ status: 404, body: '' }));
+    await page.goto(`${srv.url}/`);
     await phaseIs(page, 'ready');
     await page.waitForFunction(() => !document.getElementById('recordsEmpty').hidden);
     assert.equal(await page.isVisible('#study'), false, 'the study section is absent with no file');

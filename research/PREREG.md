@@ -4,7 +4,7 @@ Committed 2026-11-01 about 22:00 CST, before any study result was read. By then 
 
 ## Question
 
-On random characters made periodic, does tying weights across layers change when induction arrives, once tying is separated from depth and from the learning rate? Does the precursor gap of Howe (arXiv 2609.19000) hold outside his 2-layer fleets?
+On random characters made periodic, does tying weights across layers change when induction arrives, once tying is separated from depth and from the learning rate? Does the precursor gap of Howe (arXiv 2609.19000) hold outside Howe's 2-layer fleets?
 
 ## Design
 
@@ -12,7 +12,7 @@ On random characters made periodic, does tying weights across layers change when
 - Arms (L layers applied, u unique blocks, block index is l mod u): (2,2) (2,1) (3,3) (3,1) (4,4) (4,2) (4,1). The (4,2) arm has the unique parameters of (2,2) and the depth of (4,4), which is what separates tying from unique depth, the confound in 2610.31421's Dense 4L.
 - Learning rates 3e-3 and 1e-3, because 2610.24135 shows looped against untied can flip with learning rate. 64 seeds per arm per rate. Budget 6000 steps at 3e-3, 8000 at 1e-3. Runs that do not fire are right-censored at the budget.
 - Negatives: 8 seeds each, one layer, and no repeats (pRep 0), 6000 steps. Prediction: 0 events.
-- Evals every 25 steps on a fixed 16-sequence copy probe of [x ; x]. Event: copy advantage at or above 2 nats on two consecutive evals, reported at the second. Anchor: first eval with previous-token score at or above 0.10, maximum over heads and over the first max(1, floor(L/2)) applied layers. This generalizes Howe's layer 0 the way his emergence-watch package does.
+- Evals every 25 steps on a fixed 16-sequence copy probe of [x ; x]. Event: copy advantage at or above 2 nats on two consecutive evals, reported at the second. Anchor: first eval with previous-token score at or above 0.10, maximum over heads and over the first max(1, floor(L/2)) applied layers. This generalizes Howe's layer 0 the way Howe's emergence-watch package does.
 
 ## Estimators
 
@@ -26,7 +26,7 @@ On random characters made periodic, does tying weights across layers change when
 
 ## Replication wording
 
-"Replicates" is used only for Howe's config A with his anchor and event verbatim. Everything on this curriculum is "extends". The bigram table differs from his because his cannot be rebuilt without PyTorch's generator; his own Gate C ran a fresh table.
+"Replicates" is used only for Howe's config A with Howe's anchor and event verbatim. Everything on this curriculum is "extends". The bigram table differs from Howe's because Howe's cannot be rebuilt without PyTorch's generator; Howe's own Gate C ran a fresh table.
 
 ## Native against browser
 

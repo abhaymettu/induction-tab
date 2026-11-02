@@ -17,7 +17,7 @@
     "compare-tab": ".venv/bin/python tools/compare_native.py results/tab-native.jsonl results/tab-browser.jsonl results/tab-native-vs-browser.json",
     "compare": ".venv/bin/python tools/compare_native.py results/study-lr3e-3.jsonl results/browser-2-2.jsonl results/native-vs-browser.json",
     "speed-native": ".venv/bin/python ref/speed_native.py configs/tab.json cpu mps",
-    "study": ".venv/bin/python tools/analyze_study.py results/study-lr3e-3.jsonl results/study-lr1e-3.jsonl results/study-deep.jsonl results/study-curriculum.jsonl",
+    "study": ".venv/bin/python tools/analyze_study.py results/study-lr3e-3.jsonl results/study-lr1e-3.jsonl results/study-deep.jsonl results/study-curriculum.jsonl results/deep-12-12.jsonl results/deep-12-4.jsonl results/deep-8-1-long.jsonl",
     "anchor": ".venv/bin/python tools/analyze_anchor.py results/p2-T64-L2-u2.jsonl results/p2-T64-L2-u1.jsonl results/p2-T128-L2-u2.jsonl results/p2-T128-L2-u1.jsonl",
     "heads": ".venv/bin/python tools/heads_looped.py \"$(cat configs/heads-looped.json)\" 2000 8 results/heads-looped-2-1.json",
     "config-a": "node tools/dynamics.mjs \"$(cat configs/config-a.json)\" \"${SEEDS:-1-1}\" 9000 results/config-a.jsonl",

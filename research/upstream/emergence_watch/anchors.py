@@ -67,7 +67,7 @@ def paper_default_anchor(precursor_threshold: float = 0.10,
                          behavioral_threshold: float = 0.10) -> ComposedAnchor:
     """The composed anchor certified in the paper: early-layer previous-token score AND
     an in-distribution behavioral ramp, at the same evaluation. Thresholds are the
-    paper's constants for its setting — CALIBRATE YOUR OWN on your fleet; constants are
+    paper's constants for its setting, CALIBRATE YOUR OWN on your fleet; constants are
     regime-local (that non-transfer is itself a pre-registered result)."""
     return ComposedAnchor([
         Signal("prevtok_early", precursor_threshold),

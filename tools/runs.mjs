@@ -20,6 +20,7 @@ const JOBS = {
   'p2-T128-L2-u1': { cfg: { ...t128, unique: 1, evalEvery: 5 }, seeds: [101, 164], budget: 6000 },
   'tab-browser': { cfg: tab, seeds: [1, 64], budget: 3000 },
   'tab-native': { native: true, cfg: tab, seeds: [1, 64], budget: 3000 },
+  'saved-run': { cfg: tab, seeds: [1, 1], budget: 3000, stopAfter: 3000 },
   'fine-2-2': { cfg: { ...study, evalEvery: 5 }, seeds: [1, 64], budget: 6000, stopAfter: 75 },
   'crossed-rule-bigram': { cfg: { ...study, ...howe }, seeds: [1, 16], budget: 8000 },
   'crossed-rule-uniform': { cfg: { ...study, pRep: 0.75, rMax: 60 }, seeds: [1, 16], budget: 8000 },

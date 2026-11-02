@@ -93,7 +93,7 @@ function chart(fig, label, draw) {
 function survival(fig, arms) {
   const maxStep = Math.max(...arms.flatMap((a) => a.curve.map((p) => p[0])), 8000);
   chart(fig, 'Share of seeds without the event at each training step, per curriculum', (w, h, add) => {
-    const labelRoom = w < 480 ? 0 : 280;
+    const labelRoom = w < 480 ? 0 : 360;
     const m = { l: 2, t: 22, b: 24 };
     const X = (s) => m.l + (s / maxStep) * (w - m.l - labelRoom);
     const Y = (v) => m.t + (1 - v) * (h - m.t - m.b);
@@ -113,38 +113,40 @@ function survival(fig, arms) {
       p.style.stroke = `var(${STROKES[i % STROKES.length]})`;
       if (DASHES[i % DASHES.length]) p.setAttribute('stroke-dasharray', DASHES[i % DASHES.length]);
       const name = CURRICULA[arm.curriculum];
-      const text = `${name}, ${arm.medianStep ?? 'never'}`;
-      if (labelRoom) {
-        add('text', { x: w - labelRoom + 8, y: Y(last) + 4 - (last === 0 && i === 0 ? 16 : 0) }, text);
-      } else {
-        add('text', { x: X(1100) + 6, y: Y([0.82, 0.62, 0.42, 0.94][i]) }, text.replace('random characters', 'random'));
-      }
+      const text = `${name}, ${arm.medianStep ?? `none by ${maxStep}`}`;
+      // Each label carries a sample of its line, so identity never rests on position or color.
+      const lx = labelRoom ? w - labelRoom + 8 : X(1100) + 6;
+      const ly = labelRoom ? Y(last) + 4 - (last === 0 && i === 0 ? 16 : 0) : Y([0.78, 0.64, 0.5, 0.36][i]);
+      const sample = add('line', { x1: lx, x2: lx + 22, y1: ly - 4, y2: ly - 4, class: 'km' });
+      sample.style.stroke = p.style.stroke;
+      if (DASHES[i % DASHES.length]) sample.setAttribute('stroke-dasharray', DASHES[i % DASHES.length]);
+      add('text', { x: lx + 28, y: ly }, labelRoom ? text : text.replace('random characters', 'random'));
     });
   });
 }
 
 function forest(fig, arms) {
   const lo = 400;
-  const hi = 4000;
-  chart(fig, 'Median step of the event per depth and number of blocks, on a log scale', (w, h, add) => {
-    const m = { l: 142, r: 46, t: 6, b: 24 };
+  const hi = 9000;
+  chart(fig, 'Median step of the event per depth and number of blocks, on a log scale, with the seeds behind each arm', (w, h, add) => {
+    const wide = w >= 480;
+    const m = { l: 150, r: 60, t: 22, b: 24 };
     const X = (s) => m.l + (Math.log(s / lo) / Math.log(hi / lo)) * (w - m.l - m.r);
     const row = (h - m.t - m.b) / arms.length;
-    for (const s of [500, 1000, 2000, 4000]) {
+    add('text', { x: w - 24, y: m.t - 8, class: 'note', 'text-anchor': 'end' }, 'median');
+    add('text', { x: w, y: m.t - 8, class: 'note', 'text-anchor': 'end' }, 'n');
+    for (const s of wide ? [500, 1000, 2000, 4000, 8000] : [500, 2000, 8000]) {
       add('line', { x1: X(s), x2: X(s), y1: m.t, y2: h - m.b, class: 'grid' });
-      add('text', { x: X(s), y: h - 4, class: 'note', 'text-anchor': 'middle' }, s === 500 && w >= 480 ? 'step 500' : String(s));
+      add('text', { x: X(s), y: h - 4, class: 'note', 'text-anchor': 'middle' }, s === 500 && wide ? 'step 500' : String(s));
     }
     arms.forEach((a, i) => {
       const y = m.t + row * (i + 0.5);
       add('text', { x: 0, y: y + 4 }, blocks([a.L, a.u]));
-      if (a.medianStep === null) {
-        add('path', { d: `M${X(hi) - 9} ${y - 5} L${X(hi)} ${y} L${X(hi) - 9} ${y + 5} Z`, class: 'mark hollow' });
-        add('text', { x: X(hi) - 14, y: y + 4, 'text-anchor': 'end' }, w < 480 ? `none by ${hi}` : `none in ${a.n} seeds by step ${hi}`);
-        return;
-      }
       add('line', { x1: X(a.ci[0]), x2: X(a.ci[1]), y1: y, y2: y, class: 'whisker' });
       add('circle', { cx: X(a.medianStep), cy: y, r: 4, class: a.L === a.u ? 'mark' : 'mark hollow' });
-      add('text', { x: w, y: y + 4, 'text-anchor': 'end' }, String(a.medianStep));
+      if (a.prefixAtEvent[1] < 0.1) add('text', { x: X(a.ci[0]) - 8, y: y + 4, class: 'note', 'text-anchor': 'end' }, wide ? 'no prefix signature' : 'no signature');
+      add('text', { x: w - 24, y: y + 4, 'text-anchor': 'end' }, String(a.medianStep));
+      add('text', { x: w, y: y + 4, 'text-anchor': 'end' }, String(a.n));
     });
   });
 }
@@ -162,14 +164,10 @@ function contrastTable(table, contrasts) {
   const picked = contrasts.filter((x) => x.kind === 'tying' || x.kind === 'untied depth');
   picked.sort((x, y) => x.kind.localeCompare(y.kind) || x.a[0] - y.a[0] || x.a[1] - y.a[1]);
   for (const c of picked) {
-    const name = `${blocks(c.a)} against ${blocks(c.b)}`;
+    const name = c.kind === 'tying' ? `${c.a[0]} layers, ${c.a[1]} block${c.a[1] > 1 ? 's' : ''} against ${c.b[1]}` : `${c.a[0]} untied layers against ${c.b[0]}`;
     rows.set(name, { ...rows.get(name), [c.lr]: c });
   }
-  const show = (c) => {
-    if (!c) return 'not run';
-    if (c.timeRatio === null) return `above ${c.atLeast.toFixed(2)}, no events`;
-    return `${c.timeRatio.toFixed(2)} (${c.ci[0].toFixed(2)} to ${c.ci[1].toFixed(2)})`;
-  };
+  const span = (v, [a, b]) => `${v.toFixed(2)} (${a.toFixed(2)} to ${b.toFixed(2)})`;
   for (const [name, r] of rows) {
     const tr = body.insertRow();
     tr.insertCell().textContent = name;
@@ -177,7 +175,14 @@ function contrastTable(table, contrasts) {
       const td = tr.insertCell();
       td.className = 'num';
       td.dataset.lr = `lr ${lr === 0.003 ? '3e-3' : '1e-3'}`;
-      td.textContent = show(r[lr]);
+      const c = r[lr];
+      const lines = c ? [`fit ${span(c.timeRatio, c.ci)}`, `KM ${span(c.kmRatio, c.kmCi)}`] : ['not run'];
+      for (const text of lines) {
+        const line = document.createElement('span');
+        line.className = 'ratio';
+        line.textContent = text;
+        td.append(line);
+      }
     }
   }
 }

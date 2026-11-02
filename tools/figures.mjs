@@ -14,9 +14,7 @@ const THEMES = {
 };
 const FONT = "ui-monospace, SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace";
 
-// The summary keeps survival curves but not budgets, and these are what the arms were run to.
-const CURRICULUM_BUDGET = 8000;
-const DEEP_BUDGET = 4000;
+const CURRICULUM_BUDGET = arms.find((a) => a.curriculum === 'bigram clone').budget;
 
 const arm = (L, u, lr, curriculum = 'uniform tiled') => {
   const found = arms.find((a) => a.L === L && a.u === u && a.lr === lr && a.curriculum === curriculum);
@@ -83,35 +81,31 @@ function survival(theme) {
 }
 
 function medians(theme) {
-  const Y = logScale(450, 6000, 340, 96);
+  const Y = logScale(450, 9000, 340, 96);
   const SHAPES = {
     circle: (x, y, fill) => `<circle cx="${n(x)}" cy="${n(y)}" r="5" fill="${fill}" stroke="${theme.bg}" stroke-width="2"/>`,
     square: (x, y, fill) => `<rect x="${n(x - 4.5)}" y="${n(y - 4.5)}" width="9" height="9" fill="${fill}" stroke="${theme.bg}" stroke-width="2"/>`,
     diamond: (x, y, fill) => `<path d="M${n(x)} ${n(y - 6.5)} L${n(x + 6.5)} ${n(y)} L${n(x)} ${n(y + 6.5)} L${n(x - 6.5)} ${n(y)} Z" fill="${fill}" stroke="${theme.bg}" stroke-width="2"/>`,
+    triangle: (x, y, fill) => `<path d="M${n(x)} ${n(y - 6.5)} L${n(x + 6.5)} ${n(y + 5)} L${n(x - 6.5)} ${n(y + 5)} Z" fill="${fill}" stroke="${theme.bg}" stroke-width="2"/>`,
   };
   // Drawn slowest family first so the untied line stays on top where it shares a point with 2 blocks at depth 2.
   const FAMILIES = [
     { name: '1 block', shape: 'diamond', slot: 2, dash: '2 3', shapes: [[2, 1], [3, 1], [4, 1], [8, 1]] },
     { name: '2 blocks', shape: 'square', slot: 1, dash: '7 4', shapes: [[2, 2], [4, 2], [8, 2]] },
-    { name: 'untied', shape: 'circle', slot: 0, dash: '', shapes: [[2, 2], [3, 3], [4, 4], [8, 8]] },
+    { name: 'untied', shape: 'circle', slot: 0, dash: '', shapes: [[2, 2], [3, 3], [4, 4], [8, 8], [12, 12]] },
+    { name: '4 blocks', shape: 'triangle', slot: 1, dash: '', shapes: [[12, 4]] },
   ];
 
   const panel = (x0, x1, lr, title, notes) => {
-    const X = logScale(2, 8, x0 + 16, x1 - 10);
+    const X = logScale(2, 12, x0 + 16, x1 - 18);
     const out = [text(x0, 76, title, theme.text, { size: 13, weight: 600 })];
-    for (const s of [500, 1000, 2000, 4000]) out.push(hline(x0, x1, Y(s), theme.grid), text(x0 - 8, Y(s) + 4, s, theme.muted, { size: 11, anchor: 'end' }));
-    for (const d of [2, 3, 4, 8]) out.push(text(X(d), 360, d === 2 ? '2 layers' : d, theme.muted, { size: 11, anchor: 'middle' }));
+    for (const s of [500, 1000, 2000, 4000, 8000]) out.push(hline(x0, x1, Y(s), theme.grid), text(x0 - 8, Y(s) + 4, s, theme.muted, { size: 11, anchor: 'end' }));
+    for (const d of [2, 3, 4, 8, 12]) out.push(text(X(d), 360, d === 2 ? '2 layers' : d, theme.muted, { size: 11, anchor: 'middle' }));
     for (const f of FAMILIES) {
       const stroke = theme.series[f.slot];
       const points = f.shapes.filter(([L, u]) => arms.some((a) => a.L === L && a.u === u && a.lr === lr)).map(([L, u]) => ({ L, a: arm(L, u, lr) }));
       const fired = points.filter((p) => p.a.medianStep);
       out.push(`<polyline points="${fired.map((p) => `${n(X(p.L))},${n(Y(p.a.medianStep))}`).join(' ')}" fill="none" stroke="${stroke}" stroke-width="2"${f.dash ? ` stroke-dasharray="${f.dash}"` : ''}/>`);
-      for (const p of points.filter((q) => !q.a.medianStep)) {
-        const prev = fired[fired.length - 1];
-        const tipY = Y(DEEP_BUDGET);
-        out.push(`<line x1="${n(X(prev.L))}" y1="${n(Y(prev.a.medianStep))}" x2="${n(X(p.L))}" y2="${n(tipY)}" stroke="${stroke}" stroke-width="2" stroke-dasharray="${f.dash}"/>`);
-        out.push(`<path d="M${n(X(p.L))} ${n(tipY - 8)} L${n(X(p.L) + 6)} ${n(tipY + 3)} L${n(X(p.L) - 6)} ${n(tipY + 3)} Z" fill="${stroke}" stroke="${theme.bg}" stroke-width="2"/>`);
-      }
       for (const { L, a } of fired) {
         if (a.ci) out.push(`<line x1="${n(X(L))}" x2="${n(X(L))}" y1="${n(Y(a.ci[0]))}" y2="${n(Y(a.ci[1]))}" stroke="${stroke}" stroke-width="1.5"/>`);
         out.push(SHAPES[f.shape](X(L), Y(a.medianStep), stroke));
@@ -125,12 +119,15 @@ function medians(theme) {
   const body = [
     text(0, 18, 'Median step of the event, by depth and blocks', theme.text, { size: 14, weight: 600 }),
     text(0, 38, 'Study model. Untied means every layer has its own block. Bars are 95% intervals. Both axes are logarithmic.', theme.muted),
+    text(0, 54, 'Seeds per arm differ: 64 at depths 2 to 4, 32 at depth 8, 16 at depth 12, and 8 for 1 block at depth 8.', theme.muted),
     ...panel(48, 440, 0.003, 'lr 3e-3', [
       [2, med(2, 2, 0.003), 0, -13, med(2, 2, 0.003), 'middle'],
       [2, med(2, 1, 0.003), 0, -13, med(2, 1, 0.003), 'middle'],
-      [8, DEEP_BUDGET, 4, -14, `1 block. No event in ${arm(8, 1, 0.003).n} seeds by step ${DEEP_BUDGET}.`, 'end'],
-      [8, med(8, 2, 0.003), 4, -19, `2 blocks, ${med(8, 2, 0.003)}`, 'end'],
-      [8, med(8, 8, 0.003), 4, 22, `untied, ${med(8, 8, 0.003)}`, 'end'],
+      [8, med(8, 1, 0.003), -24, -2, `1 block, ${med(8, 1, 0.003)}, ${arm(8, 1, 0.003).n} seeds`, 'end'],
+      [8, med(8, 1, 0.003), -24, 14, 'no prefix signature', 'end', 'muted'],
+      [8, med(8, 2, 0.003), -8, -12, `2 blocks, ${med(8, 2, 0.003)}`, 'end'],
+      [12, med(12, 4, 0.003), 8, 22, `4 blocks, ${med(12, 4, 0.003)}`, 'end'],
+      [12, med(12, 12, 0.003), 8, 22, `untied, ${med(12, 12, 0.003)}`, 'end'],
     ]),
     ...panel(488, 880, 0.001, 'lr 1e-3', [
       [2, med(2, 2, 0.001), 0, -13, med(2, 2, 0.001), 'middle'],
@@ -138,10 +135,10 @@ function medians(theme) {
       [4, med(4, 1, 0.001), 14, 4, `1 block, ${med(4, 1, 0.001)}`, 'start'],
       [4, med(4, 2, 0.001), 14, -6, `2 blocks, ${med(4, 2, 0.001)}`, 'start'],
       [4, med(4, 4, 0.001), 14, 4, `untied, ${med(4, 4, 0.001)}`, 'start'],
-      [8, 500, 4, -8, 'depth 8 not run at this rate', 'end', 'muted'],
+      [12, 500, 8, -8, 'depths 8 and 12 not run at this rate', 'end', 'muted'],
     ]),
   ];
-  return svg(theme, 880, 372, 'Median step of the event, by depth and blocks', 'Median event step for tied and untied models at depths 2, 3, 4 and 8, at two learning rates, from results/study-summary.json.', body);
+  return svg(theme, 880, 372, 'Median step of the event, by depth and blocks', 'Median event step for tied and untied models at depths 2, 3, 4, 8 and 12, at two learning rates, from results/study-summary.json. Seeds per arm differ: 64 at depths 2 to 4, 32 at depth 8, 16 at depth 12, 8 for 8 layers with 1 block.', body);
 }
 
 fs.mkdirSync(OUT, { recursive: true });

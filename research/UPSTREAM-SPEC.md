@@ -17,7 +17,9 @@ Citation keys used below:
 | S4 | `mem-gen-delay/analysis/score_r4_p6.py` | `493c4bf` |
 | PLAN | `mem-gen-delay/plan_p6.md` (the pre-registration log) | `493c4bf` |
 | EW | `emergence-watch/emergence_watch/*.py` (MIT packaged probes) | `493c4bf` |
-| PAPER | `research/papers/2609.19000.md` (local copy) | n/a |
+| PAPER | [arXiv 2609.19000](https://arxiv.org/abs/2609.19000) | n/a |
+
+The copy of EW in `research/upstream/emergence_watch` differs from upstream in one way. Dashes in its comments and docstrings became commas, and its code is unchanged.
 
 Why F is the fleet code. The fleet spec was frozen at 6b05770 (PLAN:105, PAPER:538). The next commit that touches `train_lm.py` is 377511b (2026-07-16 03:17), which lands after the fleet verdict commit f25aa45 (2026-07-16 03:06). Every committed `runs/grid6r2/*/summary.json` holds exactly F's argparse keys and nothing that H added (no `lang`, `p_rep` override, `scaffold`). Later edits in H sit behind flags whose defaults are no-ops. I compared the functions, and the bigram path in H draws exactly as in F.
 

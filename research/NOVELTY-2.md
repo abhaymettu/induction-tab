@@ -103,7 +103,7 @@ The result stands narrowly and rests on 8 exploratory seeds. A sceptic will note
 
 ## Search log
 
-Tool key as in `NOVELTY.md`. All orx calls used `ORX_NO_UPDATE_CHECK=1`, orx 0.2.19, telemetry off, no paid, remote or account backend.
+Tool key as in `NOVELTY.md`. All orx calls used `ORX_NO_UPDATE_CHECK=1`, orx 0.2.19, telemetry off, no paid or remote backend.
 
 | # | Tool | Query | Top hits | Verdict on the claim it targeted |
 |---|---|---|---|---|
@@ -132,7 +132,7 @@ S11 ran once per language, so the total is 13 calls against a budget of 12. S3 t
 | 2404.07129, 2312.03002, 2402.11004, 2410.11474, 2606.12058, 2512.18634 | `orx paper --full` | Abstracts and targeted grep for task and data only |
 | 2511.16893 Aoyama and Wilcox | `orx paper --full` | Abstract and section 6.1 |
 | 2610.19975, 2604.11791, 2607.20594, 2610.40325, 2610.38422, 2610.19768 | `orx paper --full` | Grep only |
-| 2609.19000, 2610.31421 | local `research/papers/` | Grep and passages quoted |
+| 2609.19000, 2610.31421 | [2609.19000](https://arxiv.org/abs/2609.19000), [2610.31421](https://arxiv.org/abs/2610.31421) | Grep and passages quoted |
 | `research/upstream/emergence_watch/probes.py`, `research/UPSTREAM-SPEC.md` | local | `prev_token_score`, baseline line |
 | TheoremPath lab | `ctx_fetch_and_index` plus plain fetch | Static page text; demo not run |
 | gama, Transformer Atlas, shaikabdul185-arch, xanderchinxyz, kondareddy-th, sarimahsan, Fazmin, surfgrad, jax-js, transformer-explainer, llm-viz, tfjs-examples, onnxruntime | `gh api` | READMEs and named files, as stated above |
@@ -151,6 +151,6 @@ Not done: no demo was run; HAPAX, the greaterwrong post and the kody-w trainer w
 
 **D. Safe wording.** "Exploratory, 8 seeds: in a one-block model applied twice, the same head acted as a previous-token head on pass 0 and an induction head on pass 1. Earlier work shows shared weights can run different operations per loop through attention routing (2609.39892) and that loop visits can differ in role (2610.19975). We did not find a named circuit role assigned to one head across passes within our coverage." State how many of the 8 seeds show it, and how many split heads instead. Do not write "first" until Geiping, Wang and Zhu are checked.
 
-**E. Safe wording.** "The previous-token score of uniform causal attention over T positions is (H_T - 1)/(T - 1), which is 0.0349 at T=128 and 0.0594 at T=64. Howe's 0.10 is therefore 2.86 times this baseline on his 128-token probe and 1.68 times it on a 64-token probe. Howe reports the baseline empirically (about 10 times baseline at 0.37). We did not find the closed form or this dependence on probe length stated within our coverage." Present it as a small observation that explains a measurement, and claim more only if PREREG-2's anchor test passes.
+**E. Safe wording.** "The previous-token score of uniform causal attention over T positions is (H_T - 1)/(T - 1), which is 0.0349 at T=128 and 0.0594 at T=64. Howe's 0.10 is therefore 2.86 times this baseline on Howe's 128-token probe and 1.68 times it on a 64-token probe. Howe reports the baseline empirically (about 10 times baseline at 0.37). We did not find the closed form or this dependence on probe length stated within our coverage." Present it as a small observation that explains a measurement, and claim more only if PREREG-2's anchor test passes.
 
 **Residual risk to state.** The two closest priors for A are low-visibility (0 stars, a page with no date), and both surfaced only in the last three searches. Other small demos of this kind may exist that this coverage missed. Search engines rank them poorly, which is exactly why they were not in the first audit.

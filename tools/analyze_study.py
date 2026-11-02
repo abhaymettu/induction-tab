@@ -1,6 +1,6 @@
 """Survival analysis of the seeds study, per research/PREREG.md. Writes results/study-summary.json and results/study-table.md.
 
-    python tools/analyze_study.py results/study-lr3e-3.jsonl results/study-lr1e-3.jsonl results/study-deep.jsonl results/study-curriculum.jsonl
+    python tools/analyze_study.py results/study-lr3e-3.jsonl results/study-lr1e-3.jsonl results/study-deep.jsonl results/study-curriculum.jsonl results/deep-12-12.jsonl results/deep-12-4.jsonl results/deep-8-1-long.jsonl
 """
 import json
 import sys
@@ -15,6 +15,9 @@ ENV = (0.735, 0.901)
 
 
 TILED = "uniform tiled"
+
+# A longer rerun of an arm whose budget ended before any event. Its rows replace that arm, never merge with it.
+SUPERSEDING = {"deep-8-1-long"}
 
 
 def curriculum(c):
@@ -92,17 +95,31 @@ def spearman(a, b):
 
 
 def load(paths):
-    arms = defaultdict(list)
+    """Returns the arms and, for each superseded arm, what it held before."""
+    arms, superseding = defaultdict(list), defaultdict(list)
     for p in paths:
+        target = superseding if Path(p).stem in SUPERSEDING else arms
         for line in Path(p).read_text().splitlines():
             r = json.loads(line)
-            arms[key(r["cfg"])].append(r)
-    return arms
+            target[key(r["cfg"])].append(r)
+    replaced = {k: {"n": len(arms[k]), "events": sum(r["t_event"] is not None for r in arms[k]), "budget": max(r["budget"] for r in arms[k])} for k in superseding if k in arms}
+    return {**arms, **superseding}, replaced
+
+
+def finite(o):
+    """JSON has no Infinity or NaN, so a median never reached or an interval with no upper end becomes null."""
+    if isinstance(o, dict):
+        return {k: finite(v) for k, v in o.items()}
+    if isinstance(o, (list, tuple)):
+        return [finite(v) for v in o]
+    if isinstance(o, float) and not np.isfinite(o):
+        return None
+    return o
 
 
 def main(paths):
     rng = np.random.default_rng(0)
-    arms = load(paths)
+    arms, replaced = load(paths)
     summary = {}
     for k, rows in sorted(arms.items()):
         c = rows[0]["cfg"]
@@ -112,10 +129,12 @@ def main(paths):
         pairs = [(r["t_pv"], r["t_event"]) for r in rows if r["t_event"] is not None and r["t_pv"] is not None]
         frac = np.array([a / b for a, b in pairs]) if pairs else np.array([])
         xs, ys = km(t, e)
+        prefix = [max(c["prefix"]) for r in rows if r["t_event"] is not None for c in r["curve"] if c["step"] == r["t_event"]]
         summary[k] = {
-            "L": k[0], "u": k[1], "lr": k[2], "curriculum": k[3], "n": len(rows), "events": int(e.sum()), "medianStep": km_median(t, e) if e.any() else None,
+            "L": k[0], "u": k[1], "lr": k[2], "curriculum": k[3], "n": len(rows), "budget": max(r["budget"] for r in rows), "events": int(e.sum()), "medianStep": km_median(t, e) if e.any() else None,
             "ci": [float(np.percentile(boot, 2.5)), float(np.percentile(boot, 97.5))] if np.isfinite(boot).all() else None, "curve": list(zip(xs, ys)), "flopsPerStep": flops(c),
             "anchorNoFire": int(sum(r["t_event"] is not None and r["t_pv"] is None for r in rows)),
+            "prefixAtEvent": [min(prefix), max(prefix)] if prefix else None,
             "gap": None if not len(frac) else {
                 "median": float(np.median(frac)), "iqr": [float(np.percentile(frac, 25)), float(np.percentile(frac, 75))], "range": [float(frac.min()), float(frac.max())],
                 "inEnvelope": float(np.mean((frac >= ENV[0]) & (frac <= ENV[1]))), "n": len(frac),
@@ -124,8 +143,10 @@ def main(paths):
             },
             "_t": t, "_e": e, "_cost": flops(c),
         }
+        if k in replaced:
+            summary[k]["replaces"] = replaced[k]
 
-    contrasts = [("tying", (2, 1), (2, 2)), ("tying", (3, 1), (3, 3)), ("tying", (4, 1), (4, 4)), ("tying", (4, 2), (4, 4)), ("depth at equal unique", (4, 2), (2, 2)), ("depth at equal unique", (3, 1), (2, 1)), ("depth at equal unique", (4, 1), (2, 1)), ("untied depth", (3, 3), (2, 2)), ("untied depth", (4, 4), (2, 2)), ("tying", (8, 1), (8, 8)), ("tying", (8, 2), (8, 8)), ("depth at equal unique", (8, 2), (4, 2)), ("untied depth", (8, 8), (4, 4))]
+    contrasts = [("tying", (2, 1), (2, 2)), ("tying", (3, 1), (3, 3)), ("tying", (4, 1), (4, 4)), ("tying", (4, 2), (4, 4)), ("depth at equal unique", (4, 2), (2, 2)), ("depth at equal unique", (3, 1), (2, 1)), ("depth at equal unique", (4, 1), (2, 1)), ("untied depth", (3, 3), (2, 2)), ("untied depth", (4, 4), (2, 2)), ("tying", (8, 1), (8, 8)), ("tying", (8, 2), (8, 8)), ("depth at equal unique", (8, 2), (4, 2)), ("untied depth", (8, 8), (4, 4)), ("tying", (12, 4), (12, 12))]
     pairs = [(kind, (*a, lr, TILED), (*b, lr, TILED)) for kind, a, b in contrasts for lr in sorted({k[2] for k in summary})]
     pairs += [("curriculum", (2, 2, 0.003, c), (2, 2, 0.003, TILED)) for c in ("bigram tiled", "bigram clone", "uniform clone")]
     out = []
@@ -156,12 +177,16 @@ def main(paths):
 
     public = [{**{k: v for k, v in s.items() if not k.startswith("_")}, "label": f"{s['L']} layers, {s['u']} unique, lr {s['lr']:g}" + ("" if s["curriculum"] == TILED else f", {s['curriculum']}")} for s in summary.values()]
     Path("results").mkdir(exist_ok=True)
-    Path("results/study-summary.json").write_text(json.dumps({"arms": public, "contrasts": out}, indent=1))
+    Path("results/study-summary.json").write_text(json.dumps(finite({"arms": public, "contrasts": out}), indent=1, allow_nan=False))
 
-    lines = ["| layers | unique | lr | curriculum | n | events | median step (95% CI) | gap median (IQR) | in envelope | rho | anchor never fired |", "|---|---|---|---|---|---|---|---|---|---|---|"]
+    lines = ["| layers | unique | lr | curriculum | n | events | median step (95% CI) | gap median (IQR) | in envelope | rho | anchor never fired | top prefix score at the event |", "|---|---|---|---|---|---|---|---|---|---|---|---|"]
     for s in public:
         g = s["gap"]
-        lines.append(f"| {s['L']} | {s['u']} | {s['lr']:g} | {s['curriculum']} | {s['n']} | {s['events']} | " + (f"{s['medianStep']} ({s['ci'][0]:.0f} to {s['ci'][1]:.0f})" if s["ci"] else f"{s['medianStep']} (interval unbounded)" if s["medianStep"] else "not reached") + " | " + (f"{g['median']:.3f} ({g['iqr'][0]:.3f} to {g['iqr'][1]:.3f}) | {g['inEnvelope']:.2f} | {g['rho']:.2f} | " if g else "n/a | n/a | n/a | ") + f"{s['anchorNoFire']} |")
+        lines.append(f"| {s['L']} | {s['u']} | {s['lr']:g} | {s['curriculum']} | {s['n']} | {s['events']} | " + (f"{s['medianStep']} ({s['ci'][0]:.0f} to {s['ci'][1]:.0f})" if s["ci"] else f"{s['medianStep']} (interval unbounded)" if s["medianStep"] else "not reached") + " | " + (f"{g['median']:.3f} ({g['iqr'][0]:.3f} to {g['iqr'][1]:.3f}) | {g['inEnvelope']:.2f} | {g['rho']:.2f} | " if g else "n/a | n/a | n/a | ") + f"{s['anchorNoFire']} | " + (f"{s['prefixAtEvent'][0]:.3f} to {s['prefixAtEvent'][1]:.3f}" if s["prefixAtEvent"] else "n/a") + " |")
+    for s in public:
+        if "replaces" in s:
+            was = s["replaces"]
+            lines += ["", f"({s['L']},{s['u']}) at lr {s['lr']:g} is the longer rerun, {s['n']} seeds to step {s['budget']}. The earlier {was['n']} seeds had {was['events']} events by step {was['budget']} and are not merged into it."]
     lines += ["", "| contrast | lr | time ratio, steps (95% CI) | ratio of KM medians (95% CI) | time ratio, flops (95% CI) |", "|---|---|---|---|---|"]
     for r in out:
         if r["timeRatio"] is None:

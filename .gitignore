@@ -4,3 +4,4 @@ scratch/
 __pycache__/
 .remember/
 *.pyc
+WORKLOG.md

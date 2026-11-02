@@ -4,13 +4,13 @@
 Framework-agnostic core: every scorer consumes plain tensors (attention weights, logits,
 token ids), so any training stack can feed them. A HuggingFace convenience layer
 (`capture_attentions`) handles the eager-attention wrinkle: production kernels
-(flash/sdpa) never materialize attention weights, so the probe forward — a single small
-batch — temporarily requests eager attention. Validated against Pythia, OLMo-1 and
+(flash/sdpa) never materialize attention weights, so the probe forward, a single small
+batch, temporarily requests eager attention. Validated against Pythia, OLMo-1 and
 OLMo-2 public checkpoints (see the paper's cross-family replication).
 
 All scores are in [0, 1] except copy_advantage (nats; positive once in-context copying
 works). Conventions match the paper exactly:
-  prefix_matching_score : induction pattern — attention from second-occurrence queries to
+  prefix_matching_score : induction pattern, attention from second-occurrence queries to
                           (previous occurrence + 1). The capability's own circuit.
   prev_token_score      : attention to the immediately preceding position. The known
                           mechanistic PRECURSOR of induction (Olsson et al., 2022).
@@ -31,7 +31,7 @@ def repeated_probe_batch(vocab_size: int, batch: int = 64, half_len: int = 64,
     """Fixed, deterministic batch of repeated random sequences: [x ; x] with x uniform.
 
     The same seed must be used for every probe call within a run (and across runs you
-    intend to compare) — the probe batch is part of the instrument.
+    intend to compare), the probe batch is part of the instrument.
     """
     g = torch.Generator().manual_seed(seed)
     hi = max(lo + 1, vocab_size - lo)
@@ -103,7 +103,7 @@ def eager_attention(model):
 def capture_attentions(model, ids: torch.Tensor):
     """HF-model probe forward: returns (logits, [per-layer attention (B,H,T,T)]).
 
-    For non-HF models, pass your own capture function to the monitor instead — anything
+    For non-HF models, pass your own capture function to the monitor instead, anything
     returning this pair works.
     """
     was_training = model.training

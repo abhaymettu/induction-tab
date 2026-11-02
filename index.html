@@ -4,12 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>induction-tab</title>
-<meta name="description" content="Press start and a transformer that has never seen text teaches itself to copy, live on your GPU, in seconds. Then type into it.">
+<meta name="description" content="Press start and a transformer that has never seen text teaches itself to copy, live on your own GPU, while you watch. Then type into it.">
 <meta name="color-scheme" content="dark light">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' fill='%23101218'/%3E%3Cpath d='M2 2h1v1H2zM4 4h1v1H4zM6 6h1v1H6zM8 8h1v1H8zM10 10h1v1h-1zM12 12h1v1h-1zM2 8h1v1H2zM4 10h1v1H4zM6 12h1v1H6z' fill='%23f0dc82'/%3E%3C/svg%3E">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:ital,wght@0,300;0,400;0,500;1,400&display=swap">
 <link rel="stylesheet" href="src/app/style.css">
 <script type="module" src="src/app/main.js"></script>
 </head>
@@ -26,7 +23,7 @@
   </header>
 
   <section class="cover" id="cover">
-    <h1 id="lede">This network has never seen text, only random characters, and in a few seconds, on your own GPU, it will work out that things repeat.</h1>
+    <h1 id="lede">This network has never seen text, only random characters, and while you watch, on your own GPU, it will work out that things repeat.</h1>
     <button type="button" class="start" id="start">Start</button>
   </section>
 
@@ -81,7 +78,7 @@
   <div class="after-grid">
     <div>
       <h2 id="resultHead">Try another seed.</h2>
-      <p id="resultBody">Each seed starts from different weights. On an M4 Pro, seeds 1 to 5 reached the event between step 425 and step 600.</p>
+      <p id="resultBody">Each seed starts from different weights. On an M4 Pro, seeds 1 to 64 reached the event between step 400 and step 700.</p>
     </div>
     <div class="after-actions">
       <button type="button" class="solid" id="again">Run again with a new seed</button>
@@ -132,27 +129,29 @@
   <section>
     <h2>Why this is a phase change</h2>
     <div>
-      <p>On the first pass through a random sequence the best possible loss is chance, ln 96 = 4.56 nats, however long you train. So the difference between the first pass and the second measures copying alone. That difference is the copy advantage. In the saved run it creeps up to 0.33 by step 350, reaches 1.73 by step 425 and stays above 2 from step 475. The remaining 2500 steps take it to 4.59.</p>
-      <p>The instruments come from Gunner Howe, arXiv 2609.19000. The event is copy advantage at or above 2 nats on two consecutive evals, reported at the second. The precursor is the first time a first-layer head reaches a previous-character score of 0.10. The prefix-matching score is the induction head's own signature.</p>
+      <p>On the first pass through a random sequence the best possible loss is chance, ln 96 = 4.56 nats, however long you train. Copy advantage is the first-pass loss minus the second-pass loss, and it does not measure copying alone. A model that expects repeats guesses wrong on characters it has not seen, so its first-pass loss climbs above chance. On the tab's model at the event, over 64 seeds, the first pass is 5.23 against chance at 4.56, the second pass is 3.01, the advantage is 2.23, and a median 30 percent of that advantage is the first pass rising above chance.</p>
+      <p>In the saved run the advantage creeps up to 0.33 by step 350, reaches 1.73 by step 425 and stays above 2 from step 475. The remaining 2500 steps take it to 4.59, which is more than ln 96 for the same reason. At step 3000 the first pass is 4.73 and the second is 0.14, so the second pass is close to perfect and the first sits above chance.</p>
+      <p>The instruments come from Gunner Howe, arXiv 2609.19000, and the event's definition stays Howe's. The event is copy advantage at or above 2 nats on two consecutive evals, reported at the second. The precursor is the first time a first-layer head reaches a previous-character score of 0.10. The prefix-matching score is the induction head's own signature.</p>
     </div>
   </section>
 
   <section>
     <h2>What correct means here</h2>
     <div>
-      <p>The trainer is raw WGSL. The forward pass, the backward pass and AdamW are written by hand, with no ML library underneath. <code>npm run parity</code> checks the gradient of every parameter tensor against PyTorch autograd, and they agree to about 1e-6 relative L2. So what ran on your GPU computes the gradients PyTorch would.</p>
-      <p>The stronger test is a whole run. Started from the same weights on the same batches, this trainer and native PyTorch reached the event at the same evaluation on all 64 seeds of the study's two-layer model and on all 8 seeds run of the tab's own model. Their copy advantage never differed by more than 4.4e-6, one on a GPU and the other on a CPU.</p>
-      <p>It is not faster than native. On the M4 Pro this trainer takes 10.3 ms per step on the tab's model, PyTorch takes 5.5 on the same GPU through MPS, and 13.9 on the CPU with 8 threads. The point is that nothing needs installing.</p>
-      <p>Run at Gunner Howe's own configuration, far larger than the tab's, with Howe's language, anchor and event, this trainer reached the event at step <span id="configA">6225</span>, inside the range Howe reports for 30 seeds, 5650 to 7400. The anchor fired at 0.847 of that time, against Howe's median of 0.844. It takes 24 minutes a seed, so this is a check on the window and the fraction, not a rerun of the fleet.</p>
-      <p>The configuration is 96 printable ASCII characters, 128 characters of context, width 128, 4 heads, 2 layers, batch 16. It trains only on uniform random characters made periodic.</p>
+      <p>The trainer is raw WGSL. The forward pass, the backward pass and AdamW are written by hand, with no ML library underneath. <code>npm run parity</code> checks the gradient of every parameter tensor against PyTorch autograd on five configurations, including the tab's, and on an M4 Pro the worst relative L2 is about 1.1e-6. It moves a little between runs, from 1.06e-6 to 1.13e-6 so far.</p>
+      <p>The stronger test is a whole run. Started from the same weights on the same batches, one on the M4 Pro's GPU and the other in PyTorch on a CPU, the tab's model reaches the event at the same step and the precursor at the same step on 64 of 64 seeds, compared at evals 25 steps apart. Their copy advantage differs by 6.5e-5 at worst, and 1328 of 1336 evals differ by under 1e-5. The study's smaller model matches on 64 of 64 seeds too, worst difference 3.2e-6.</p>
+      <p>All 64 seeds of the tab's model fire, at a median of step 475 and a range of 400 to 700, with no stalls by step 3000.</p>
+      <p>It is not faster than native, and it needs nothing installed. On the M4 Pro this trainer takes 10.3 ms per step on the tab's model, PyTorch takes 5.5 on the same GPU through MPS, and 13.9 on the CPU with 8 threads.</p>
+      <p>Run at Gunner Howe's own configuration, far larger than the tab's, with Howe's language, precursor and event, seed 1 of this trainer reached the event at step 6225, inside the range Howe reports for 30 seeds, 5650 to 7400. The precursor fired at 0.847 of that time, near Howe's median of 0.844. That is one seed, so it is one draw and nothing more. A rerun takes 24 minutes a seed.</p>
+      <p>The tab's model reads an alphabet of 96 tokens, printable ASCII and one token that never renders, with 128 characters of context, width 128, 4 heads, 2 layers and batch 16. It trains only on uniform random characters made periodic.</p>
     </div>
   </section>
 
   <section>
     <h2>What did not work</h2>
     <div>
-      <p>Gunner Howe's curriculum is too slow for a tab at this size. On a model of width 64 and context 64 it took a median of 7500 steps, against 575 for random characters repeating at random periods, which puts all the pressure on copying. The numbers are under Across seeds below.</p>
-      <p>Two negative controls showed no event in 6000 steps, on 8 seeds each. One layer has no head beneath it to read the previous character, and its copy advantage never passed 1.20. A model that never sees a repeat has nothing to copy, and it never passed 0.07.</p>
+      <p>Gunner Howe's curriculum does not fit a tab at this size. The tab's own model on Howe's language and clone rule fired on 0 of 8 seeds by step 8000, where its own curriculum fires by step 700 on all 64. We stopped at 8000, so this does not say it never would.</p>
+      <p>Two negative controls on the tab's model showed no event in 6000 steps, on 8 seeds each. One layer has no head beneath it to read the previous character, and its copy advantage peaked at 0.913. A model that never sees a repeat has nothing to copy, and its copy advantage peaked at 0.029.</p>
     </div>
   </section>
 
@@ -160,21 +159,37 @@
     <h2>Prior work</h2>
     <div>
       <p>Other browser demos train induction heads live, including <a href="https://theorempath.com/demo/induction-heads-lab">TheoremPath's lab</a> and <a href="https://github.com/pariharshyamu/gama">gama's Induction</a>, both on the CPU or without a stated GPU backend. This one runs on the viewer's GPU in hand-written WGSL, keeps MLPs and LayerNorm, and streams previous-token and induction scores with head ablation on one page. We did not find that combination within our search coverage.</p>
-      <p>This stands on other people's work. <a href="https://sequence.toys">Sequence Toy</a> and <a href="https://github.com/vinhowe/piston">Piston</a> by Vin Howe train sequence models in the browser on WebGPU. <a href="https://github.com/jbingen/tabgpt">TabGPT</a> and <a href="https://github.com/toprakdeviren/webgpu-llm">webgpu-llm</a> write their training kernels by hand in WGSL. <a href="https://arxiv.org/abs/2601.21631">Little Language Machine</a> trains a small transformer client-side. The circuit is from Olsson et al. 2022, <a href="https://transformer-circuits.pub/2022/in-context-learning-and-induction-heads/index.html">In-context Learning and Induction Heads</a>. The instruments and the transition are from Gunner Howe 2026, <a href="https://arxiv.org/abs/2609.19000">arXiv 2609.19000</a>.</p>
+      <p>This stands on other people's work. <a href="https://sequence.toys">Sequence Toy</a> and <a href="https://github.com/vinhowe/piston">Piston</a> by Vin Howe train sequence models in the browser on WebGPU. <a href="https://github.com/jbingen/tabgpt">TabGPT</a> and <a href="https://github.com/toprakdeviren/webgpu-llm">webgpu-llm</a> write their training kernels by hand in WGSL. <a href="https://arxiv.org/abs/2601.21631">Little Language Machine</a> trains a small transformer client-side. The circuit is from Olsson et al. 2022, <a href="https://transformer-circuits.pub/2022/in-context-learning-and-induction-heads/index.html">In-context Learning and Induction Heads</a>. The instruments and the transition are from Gunner Howe 2026, <a href="https://arxiv.org/abs/2609.19000">arXiv 2609.19000</a>. Zucchet et al. 2025, <a href="https://arxiv.org/abs/2505.17863">arXiv 2505.17863</a>, found that repetition can greatly speed up the emergence of sparse attention, in theory and on an in-context associative recall task, the same direction as the repeat rule below.</p>
     </div>
   </section>
 
   <section id="study" class="data" hidden>
     <h2>Across seeds</h2>
     <div>
-      <p>This is a smaller model than the tab's, width 64 and context 64, so a rented CPU machine could run many seeds. Every configuration here ran 64 seeds unless it says otherwise, and the full tables are in the repo.</p>
-      <p>Most of the speed is the curriculum. On random characters made periodic this model reaches the event at a median of step 575. Gunner Howe's language made periodic takes 1025. That language with its original clone rule takes 7500, and 4 of 16 seeds had not got there by step 8000. Random characters under the clone rule never got there in any of 16 seeds.</p>
+      <p>This is a smaller model than the tab's, width 64 and context 64, so we could afford many seeds. Arms ran 64 seeds unless it says otherwise, and the full tables are in the repo.</p>
+      <p>The curriculum moves the event by thousands of steps. On random characters made periodic this model reaches it at a median of step 575. Gunner Howe's language made periodic takes 1025, and that language with its clone rule takes 7500, with 4 of 16 seeds still waiting at step 8000. Random characters under the clone rule had no event on any of 16 seeds by then.</p>
       <figure class="study-fig" id="studyCurriculum"></figure>
-      <p>Shared weights delay the event, and the delay grows with depth. A block here is one set of weights, so 8 layers with 1 block is the same block applied 8 times. At equal depth, fewer blocks means a later event, up to depth 8, where one block had not fired in 32 seeds by step 4000. Extra depth with its own weights costs little in steps. A filled circle is a model whose every layer has its own weights.</p>
+      <p>Those curves change three things at once. Periodic, or tiled, means the whole sequence repeats at one period, and those arms used repeat probability 1 and periods in [4, 32). The clone rule copies the start of a sequence once at a random offset, and those arms used repeat probability 0.75 and periods in [4, 60). Changing one factor at a time, 16 seeds a side except the 64 of the first study:</p>
+      <div class="table-wrap"><table class="stack" id="curriculumTable">
+        <thead><tr><th>what changed, on what</th><th>one side</th><th>the other</th></tr></thead>
+        <tbody>
+          <tr><td>Repeat rule, on Howe's language, probability 1, periods [4, 32)</td><td data-side="tiled">16 of 16, median 1025</td><td data-side="clone">2 of 16 by step 8000</td></tr>
+          <tr><td>Repeat rule, on random characters, probability 0.75, periods [4, 60)</td><td data-side="tiled">12 of 16, median 2275</td><td data-side="clone">0 of 16 by step 8000</td></tr>
+          <tr><td>Period range, on random characters, tiled, probability 1</td><td data-side="[4, 32)">64 of 64, median 575</td><td data-side="[4, 60)">16 of 16, median 1025</td></tr>
+          <tr><td>Period range, on Howe's language, clone rule, probability 0.75</td><td data-side="[4, 32)">1 of 16 by step 8000</td><td data-side="[4, 60)">12 of 16, median 7500</td></tr>
+        </tbody>
+      </table></div>
+      <p>The repeat rule carries most of the drop in steps. The period range even changes direction between rules. Under tiling, longer periods take more steps, 1025 against 575, a ratio of 1.78 (1.61 to 1.87). Under the clone rule, shorter periods are worse, 1 of 16 against 12 of 16.</p>
+      <p>Shared weights delay the event at equal depth. A block here is one set of weights, so 8 layers with 1 block is the same block applied 8 times. With 1 block the delay grows with depth. Depth 12 shows no crossover, 4 blocks against 12 is 1.74 (1.63 to 1.87) on Kaplan-Meier medians. Extra depth with its own weights costs little in steps. A filled circle is a model whose every layer has its own weights, and the n column counts seeds, which differ by arm.</p>
       <figure class="study-fig rows" id="studyForest"></figure>
-      <div class="table-wrap"><table id="studyTable"></table></div>
-      <p>The precursor is a weaker clock on these small models than in Gunner Howe's fleet, where it fires at a median 0.844 of the time to the event and every seed falls between 0.735 and 0.901. Across the arms above the medians run from 0.73 to 0.85, and three sat just under that range, which fired a falsifier we had written down in advance. We guessed the cause was how close the 0.10 threshold sits to chance on a short probe. That was wrong. The cause on the two-layer arm is the evaluation clock: on an event near step 575, evaluating every 25 steps adds a real delay. New seeds evaluated every 5 steps read 0.756, and the same runs read at 25-step spacing give 0.727, the first study's median. Spacing does not explain Howe's curriculum on this model at 0.63, or 8 layers with 2 blocks at 0.68, so the fraction does not carry everywhere. A rescaled threshold we preregistered also missed on one arm, 0.903 against 0.901.</p>
+      <div class="table-wrap"><table class="stack" id="studyTable"></table></div>
+      <p>Fit is the censored log-normal the plan preregistered, and KM is the ratio of Kaplan-Meier medians. The two disagree where a few runs stall, as at 4 layers with 1 block and lr 3e-3, where 7 of 64 had no event by step 6000 and the ratio reads 3.27 by the fit and 2.81 by KM.</p>
+      <p>Depth 8 with 1 block is its own case. The earlier 32 seeds had no event by step 4000. Run to step 16000, 8 of 8 fire, at a median of step 7150. But its prefix score at the event stays at or below 0.089, and every other arm reads at least 0.27. So that arm copies by a route the prefix score does not see, and the event alone does not show an induction head there. This is exploratory, on 8 seeds.</p>
+      <p>We did not separate effective step size from structure. A tied block's gradient sums across its passes, Adam rescales by running magnitude, and lowering lr from 3e-3 to 1e-3 slowed looped arms further, 4 layers with 1 block from step 1825 to step 4950.</p>
       <p>We did not find this delay reported within our search. The closest work finds looped models earlier than a dense model, on other tasks and at greater depth (<a href="https://arxiv.org/abs/2610.31421">2610.31421</a>, <a href="https://arxiv.org/abs/2610.24135">2610.24135</a>), and we do not claim a contradiction.</p>
+      <p>The precursor is a weaker clock on these small models than in Gunner Howe's fleet, where it fires at a median 0.844 of the time to the event and every seed falls between 0.735 and 0.901. At depths 2 to 4 the arm medians run from 0.727 to 0.848, and three sat just under that range, which fired a falsifier we had written down in advance. Part of that is eval spacing. We reran the two-layer arm's seeds evaluating every 5 steps, and reading those runs every 25 steps reproduces the study's event and precursor on 61 of 61 readable seeds, with 3 seeds stopped before the coarse event. On those seeds the gap is 0.748 at 5-step evals against 0.727 at 25-step, so the median moves back inside the range by a small amount. The other two arms were not rerun. At context 128 and 5-step evals, 64 seeds, 2 layers with 2 blocks read 0.798 and 2 layers with 1 block read 0.862, both inside.</p>
+      <p>Spacing does not explain Howe's curriculum on this model at 0.63 or 8 layers with 2 blocks at 0.68, and the deepest tied arms sit lower, 12 layers with 4 blocks at 0.50 and 8 layers with 1 block at 0.16, so the fraction does not carry everywhere. A rescaled threshold we preregistered failed literally on one arm, 0.903 against 0.901.</p>
+      <p>Small models also stall. At width 64 and context 128, 5 of 64 and 2 of 64 seeds had no event by step 6000. The tab's model had none in 64.</p>
     </div>
   </section>
 

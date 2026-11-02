@@ -9,7 +9,7 @@ from pathlib import Path
 import numpy as np
 
 sys.path.insert(0, str(Path(__file__).parent))
-from analyze_study import ENV, km_median
+from analyze_study import ENV, finite, km_median
 
 BOOT = 4000
 R = Path("results")
@@ -113,8 +113,8 @@ def main():
     how = rows("tab-howe-curriculum")
     out["tabOnHowe"] = {**summary(how), "finalCopyAdv": [round(r["curve"][-1]["copyAdv"], 3) for r in how], "finalPrefix": [round(max(r["curve"][-1]["prefix"]), 3) for r in how]}
 
-    (R / "third-summary.json").write_text(json.dumps(out, indent=1) + "\n")
-    print(json.dumps(out, indent=1))
+    (R / "third-summary.json").write_text(json.dumps(finite(out), indent=1, allow_nan=False) + "\n")
+    print(json.dumps(finite(out), indent=1, allow_nan=False))
 
 
 if __name__ == "__main__":

@@ -1,16 +1,16 @@
 {
  "curriculum": {
   "rule, Howe's language, pRep 1, periods [4, 32): clone against tiled": {
-   "ratio": Infinity,
+   "ratio": null,
    "ci": [
-    NaN,
-    NaN
+    null,
+    null
    ],
    "bootFinite": 0.00025,
    "a": {
     "n": 16,
     "events": 2,
-    "medianStep": Infinity
+    "medianStep": null
    },
    "b": {
     "n": 16,
@@ -50,16 +50,16 @@
    }
   },
   "range, Howe's language clone, pRep 0.75: [4, 32) against [4, 60)": {
-   "ratio": Infinity,
+   "ratio": null,
    "ci": [
-    NaN,
-    NaN
+    null,
+    null
    ],
    "bootFinite": 0.0,
    "a": {
     "n": 16,
     "events": 1,
-    "medianStep": Infinity
+    "medianStep": null
    },
    "b": {
     "n": 16,

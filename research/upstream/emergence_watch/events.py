@@ -2,7 +2,7 @@
 """Event criteria: when has the capability actually arrived?
 
 Hard-won rule, encoded here after it broke twice in our own frozen specs: events are
-ABSOLUTE behavioral crossings with a sustain requirement — never a percentage of a
+ABSOLUTE behavioral crossings with a sustain requirement, never a percentage of a
 run's own maximum, which is silently corrupted by any late-training outlier.
 """
 from __future__ import annotations

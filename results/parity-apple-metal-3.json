@@ -425,11 +425,11 @@
      "worstName": "b1.ln1b"
     },
     "pN": {
-     "worstRelL2": 4.499172026726174e-7,
+     "worstRelL2": 4.6705272489636147e-7,
      "worstName": "b0.ln2b"
     },
     "gradN": {
-     "worstRelL2": 0.000001125956709671913,
+     "worstRelL2": 0.0000011247154798360174,
      "worstName": "b1.ln1g"
     }
    },
@@ -438,8 +438,8 @@
    "perTensorGrad0": [
     {
      "name": "wte",
-     "relL2": 1.692519594709845e-7,
-     "maxRel": 1.8022005589705254e-7
+     "relL2": 1.6927444161464667e-7,
+     "maxRel": 1.8022007213668828e-7
     },
     {
      "name": "wpe",
@@ -596,12 +596,12 @@
      "worstName": "b0.w2"
     },
     "pN": {
-     "worstRelL2": 2.1551350496412502e-7,
+     "worstRelL2": 2.1847212470156184e-7,
      "worstName": "b1.b1"
     },
     "gradN": {
-     "worstRelL2": 9.560495476675747e-7,
-     "worstName": "b0.b1"
+     "worstRelL2": 9.54223497069759e-7,
+     "worstName": "b1.b1"
     }
    },
    "lossMaxAbsErr": 0.000007152557373046875,
@@ -609,8 +609,8 @@
    "perTensorGrad0": [
     {
      "name": "wte",
-     "relL2": 1.5410264236010228e-7,
-     "maxRel": 3.336726116448538e-7
+     "relL2": 1.5465784339602416e-7,
+     "maxRel": 4.0040713397382457e-7
     },
     {
      "name": "wpe",
