@@ -31,3 +31,5 @@ On random characters made periodic, does tying weights across layers change when
 ## Native against browser
 
 The same seeds of the (2,2) arm at 3e-3 run in the WGSL trainer. Pass: paired median difference in event step within one eval (25 steps), with its bootstrap interval reported. Bitwise equality is not expected, since float rounding differs and training is chaotic.
+
+Edited after commit only to replace gendered pronouns for Howe with the name. `git log -p research/PREREG.md` shows every change.
