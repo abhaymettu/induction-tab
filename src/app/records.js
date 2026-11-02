@@ -59,45 +59,49 @@ export async function loadRecords() {
 const DASHES = ['', '6 4', '2 4', '10 4 2 4', '1 3'];
 const STROKES = ['--glow', '--ink', '--ink-2', '--ink-3', '--ink-3'];
 
-export async function loadStudy() {
-  let data = null;
-  try {
-    const res = await fetch('results/study-summary.json', { cache: 'no-store' });
-    if (res.ok) data = await res.json();
-  } catch { data = null; }
-  if (!data?.arms?.length) return;
-  const section = document.getElementById('study');
-  section.hidden = false;
-  const fig = document.getElementById('studyFig');
+const CURRICULA = {
+  'uniform tiled': 'random characters, periodic',
+  'bigram tiled': "Howe's language, periodic",
+  'bigram clone': "Howe's language, clone rule",
+  'uniform clone': 'random characters, clone rule',
+};
+const blocks = (a) => `${a[0]} layers, ${a[1]} block${a[1] > 1 ? 's' : ''}`;
+
+function chart(fig, label, draw) {
   const svg = document.createElementNS(NS, 'svg');
   svg.setAttribute('role', 'img');
-  svg.setAttribute('aria-label', 'Share of seeds without the event at each training step, per configuration');
+  svg.setAttribute('aria-label', label);
   fig.append(svg);
-  const maxStep = Math.max(...data.arms.flatMap((a) => a.curve.map((p) => p[0])));
-  const draw = () => {
+  const add = (name, attrs, content) => {
+    const n = document.createElementNS(NS, name);
+    for (const [k, v] of Object.entries(attrs)) n.setAttribute(k, v);
+    if (content !== undefined) n.textContent = content;
+    svg.append(n);
+    return n;
+  };
+  const redraw = () => {
     const { width: w, height: h } = fig.getBoundingClientRect();
     if (!w) return;
     svg.setAttribute('viewBox', `0 0 ${w} ${h}`);
     svg.replaceChildren();
-    const labelRoom = w < 420 ? 96 : 170;
+    draw(w, h, add);
+  };
+  new ResizeObserver(redraw).observe(fig);
+  redraw();
+}
+
+function survival(fig, arms) {
+  const maxStep = Math.max(...arms.flatMap((a) => a.curve.map((p) => p[0])), 8000);
+  chart(fig, 'Share of seeds without the event at each training step, per curriculum', (w, h, add) => {
+    const labelRoom = w < 480 ? 0 : 280;
     const m = { l: 2, t: 22, b: 24 };
     const X = (s) => m.l + (s / maxStep) * (w - m.l - labelRoom);
     const Y = (v) => m.t + (1 - v) * (h - m.t - m.b);
-    const text = (x, y, t, cls, anchor) => {
-      const n = document.createElementNS(NS, 'text');
-      n.setAttribute('x', x);
-      n.setAttribute('y', y);
-      if (cls) n.setAttribute('class', cls);
-      if (anchor) n.setAttribute('text-anchor', anchor);
-      n.textContent = t;
-      svg.append(n);
-    };
-    text(m.l, m.t - 8, 'all seeds still without the event', 'note');
-    text(m.l, Y(0) - 7, 'none', 'note');
-    text(m.l, h - 4, 'step 0', 'note');
-    text(w - labelRoom, h - 4, `step ${maxStep}`, 'note', 'end');
-    const ends = [];
-    data.arms.forEach((arm, i) => {
+    add('text', { x: m.l, y: m.t - 8, class: 'note' }, 'every seed still without the event');
+    add('text', { x: w - labelRoom, y: Y(0) - 7, class: 'note', 'text-anchor': 'end' }, 'none left');
+    add('text', { x: m.l, y: h - 4, class: 'note' }, 'step 0');
+    add('text', { x: w - labelRoom, y: h - 4, class: 'note', 'text-anchor': 'end' }, `step ${maxStep}`);
+    arms.forEach((arm, i) => {
       let d = '';
       let last = 1;
       for (const [s, v] of arm.curve) {
@@ -105,41 +109,91 @@ export async function loadStudy() {
         last = v;
       }
       d += `L${X(maxStep).toFixed(1)} ${Y(last).toFixed(1)}`;
-      const p = document.createElementNS(NS, 'path');
-      p.setAttribute('d', d);
-      p.setAttribute('class', 'km');
+      const p = add('path', { d, class: 'km' });
       p.style.stroke = `var(${STROKES[i % STROKES.length]})`;
       if (DASHES[i % DASHES.length]) p.setAttribute('stroke-dasharray', DASHES[i % DASHES.length]);
-      svg.append(p);
-      ends.push({ y: Y(last), label: arm.label });
+      const name = CURRICULA[arm.curriculum];
+      const text = `${name}, ${arm.medianStep ?? 'never'}`;
+      if (labelRoom) {
+        add('text', { x: w - labelRoom + 8, y: Y(last) + 4 - (last === 0 && i === 0 ? 16 : 0) }, text);
+      } else {
+        add('text', { x: X(1100) + 6, y: Y([0.82, 0.62, 0.42, 0.94][i]) }, text.replace('random characters', 'random'));
+      }
     });
-    ends.sort((a, b) => a.y - b.y);
-    let prevY = -Infinity;
-    for (const e of ends) {
-      const y = Math.max(e.y + 4, prevY + 15);
-      text(w - labelRoom + 8, y, e.label);
-      prevY = y;
-    }
-  };
-  new ResizeObserver(draw).observe(fig);
-  draw();
+  });
+}
 
-  const table = document.getElementById('studyTable');
+function forest(fig, arms) {
+  const lo = 400;
+  const hi = 4000;
+  chart(fig, 'Median step of the event per depth and number of blocks, on a log scale', (w, h, add) => {
+    const m = { l: 142, r: 46, t: 6, b: 24 };
+    const X = (s) => m.l + (Math.log(s / lo) / Math.log(hi / lo)) * (w - m.l - m.r);
+    const row = (h - m.t - m.b) / arms.length;
+    for (const s of [500, 1000, 2000, 4000]) {
+      add('line', { x1: X(s), x2: X(s), y1: m.t, y2: h - m.b, class: 'grid' });
+      add('text', { x: X(s), y: h - 4, class: 'note', 'text-anchor': 'middle' }, s === 500 && w >= 480 ? 'step 500' : String(s));
+    }
+    arms.forEach((a, i) => {
+      const y = m.t + row * (i + 0.5);
+      add('text', { x: 0, y: y + 4 }, blocks([a.L, a.u]));
+      if (a.medianStep === null) {
+        add('path', { d: `M${X(hi) - 9} ${y - 5} L${X(hi)} ${y} L${X(hi) - 9} ${y + 5} Z`, class: 'mark hollow' });
+        add('text', { x: X(hi) - 14, y: y + 4, 'text-anchor': 'end' }, w < 480 ? `none by ${hi}` : `none in ${a.n} seeds by step ${hi}`);
+        return;
+      }
+      add('line', { x1: X(a.ci[0]), x2: X(a.ci[1]), y1: y, y2: y, class: 'whisker' });
+      add('circle', { cx: X(a.medianStep), cy: y, r: 4, class: a.L === a.u ? 'mark' : 'mark hollow' });
+      add('text', { x: w, y: y + 4, 'text-anchor': 'end' }, String(a.medianStep));
+    });
+  });
+}
+
+function contrastTable(table, contrasts) {
   const head = table.createTHead().insertRow();
-  [['configuration'], ['median step', 'num'], ['95% interval', 'num'], ['events', 'num'], ['seeds', 'num']].forEach(([label, cls]) => {
+  [['how many times later', ''], ['lr 3e-3, 95% interval', 'num'], ['lr 1e-3, 95% interval', 'num']].forEach(([label, cls]) => {
     const th = document.createElement('th');
     th.textContent = label;
     if (cls) th.className = cls;
     head.append(th);
   });
   const body = table.createTBody();
-  for (const a of data.arms) {
-    const tr = body.insertRow();
-    const add = (t, cls) => { const td = tr.insertCell(); td.textContent = t; if (cls) td.className = cls; };
-    add(a.label);
-    add(a.medianStep === null || a.medianStep === undefined ? 'not reached' : String(a.medianStep), 'num');
-    add(a.ci ? `${a.ci[0] ?? 'open'} to ${a.ci[1] ?? 'open'}` : '', 'num');
-    add(String(a.events), 'num');
-    add(String(a.n), 'num');
+  const rows = new Map();
+  const picked = contrasts.filter((x) => x.kind === 'tying' || x.kind === 'untied depth');
+  picked.sort((x, y) => x.kind.localeCompare(y.kind) || x.a[0] - y.a[0] || x.a[1] - y.a[1]);
+  for (const c of picked) {
+    const name = `${blocks(c.a)} against ${blocks(c.b)}`;
+    rows.set(name, { ...rows.get(name), [c.lr]: c });
   }
+  const show = (c) => {
+    if (!c) return 'not run';
+    if (c.timeRatio === null) return `above ${c.atLeast.toFixed(2)}, no events`;
+    return `${c.timeRatio.toFixed(2)} (${c.ci[0].toFixed(2)} to ${c.ci[1].toFixed(2)})`;
+  };
+  for (const [name, r] of rows) {
+    const tr = body.insertRow();
+    tr.insertCell().textContent = name;
+    for (const lr of [0.003, 0.001]) {
+      const td = tr.insertCell();
+      td.className = 'num';
+      td.dataset.lr = `lr ${lr === 0.003 ? '3e-3' : '1e-3'}`;
+      td.textContent = show(r[lr]);
+    }
+  }
+}
+
+export async function loadStudy() {
+  let data = null;
+  try {
+    const res = await fetch('results/study-summary.json', { cache: 'no-store' });
+    if (res.ok) data = await res.json();
+  } catch { data = null; }
+  if (!data?.arms?.length) return;
+  document.getElementById('study').hidden = false;
+  const atTabRate = data.arms.filter((a) => a.lr === 0.003);
+  const curricula = Object.keys(CURRICULA).map((c) => atTabRate.find((a) => a.L === 2 && a.u === 2 && a.curriculum === c));
+  survival(document.getElementById('studyCurriculum'), curricula);
+  const tiled = atTabRate.filter((a) => a.curriculum === 'uniform tiled').sort((a, b) => a.L - b.L || b.u - a.u);
+  forest(document.getElementById('studyForest'), tiled);
+  contrastTable(document.getElementById('studyTable'), data.contrasts);
 }

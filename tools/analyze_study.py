@@ -113,8 +113,8 @@ def main(paths):
         frac = np.array([a / b for a, b in pairs]) if pairs else np.array([])
         xs, ys = km(t, e)
         summary[k] = {
-            "L": k[0], "u": k[1], "lr": k[2], "curriculum": k[3], "n": len(rows), "events": int(e.sum()), "medianStep": km_median(t, e),
-            "ci": [float(np.percentile(boot, 2.5)), float(np.percentile(boot, 97.5))], "curve": list(zip(xs, ys)), "flopsPerStep": flops(c),
+            "L": k[0], "u": k[1], "lr": k[2], "curriculum": k[3], "n": len(rows), "events": int(e.sum()), "medianStep": km_median(t, e) if e.any() else None,
+            "ci": [float(np.percentile(boot, 2.5)), float(np.percentile(boot, 97.5))] if np.isfinite(boot).all() else None, "curve": list(zip(xs, ys)), "flopsPerStep": flops(c),
             "anchorNoFire": int(sum(r["t_event"] is not None and r["t_pv"] is None for r in rows)),
             "gap": None if not len(frac) else {
                 "median": float(np.median(frac)), "iqr": [float(np.percentile(frac, 25)), float(np.percentile(frac, 75))], "range": [float(frac.min()), float(frac.max())],
@@ -158,7 +158,7 @@ def main(paths):
     lines = ["| layers | unique | lr | curriculum | n | events | median step (95% CI) | gap median (IQR) | in envelope | rho | anchor never fired |", "|---|---|---|---|---|---|---|---|---|---|---|"]
     for s in public:
         g = s["gap"]
-        lines.append(f"| {s['L']} | {s['u']} | {s['lr']:g} | {s['curriculum']} | {s['n']} | {s['events']} | {s['medianStep']} ({s['ci'][0]:.0f} to {s['ci'][1]:.0f}) | " + (f"{g['median']:.3f} ({g['iqr'][0]:.3f} to {g['iqr'][1]:.3f}) | {g['inEnvelope']:.2f} | {g['rho']:.2f} | " if g else "n/a | n/a | n/a | ") + f"{s['anchorNoFire']} |")
+        lines.append(f"| {s['L']} | {s['u']} | {s['lr']:g} | {s['curriculum']} | {s['n']} | {s['events']} | " + (f"{s['medianStep']} ({s['ci'][0]:.0f} to {s['ci'][1]:.0f})" if s["ci"] else "not reached") + " | " + (f"{g['median']:.3f} ({g['iqr'][0]:.3f} to {g['iqr'][1]:.3f}) | {g['inEnvelope']:.2f} | {g['rho']:.2f} | " if g else "n/a | n/a | n/a | ") + f"{s['anchorNoFire']} |")
     lines += ["", "| contrast | lr | time ratio, steps (95% CI) | time ratio, flops (95% CI) |", "|---|---|---|---|"]
     for r in out:
         if r["timeRatio"] is None:

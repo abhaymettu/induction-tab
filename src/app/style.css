@@ -454,6 +454,8 @@ button { font: inherit; color: inherit; touch-action: manipulation; -webkit-tap-
 }
 /* Tables and the study chart need the whole width, so these sections drop the inner column above the wide screens. */
 @media (min-width: 761px) {
+  .notes > .data { row-gap: 1.5rem; }
+  .notes .data p + p, .notes .data figure + p, .notes .data .table-wrap + p { margin-top: 0; }
   .data > div { display: contents; }
   .data > div > p { grid-column: 2; }
   .data .study-fig, .data .table-wrap { grid-column: 1 / -1; margin-top: 0; }
@@ -543,6 +545,12 @@ td.num, th.num { text-align: right; }
 .study-fig text { font-size: 0.75rem; font-family: inherit; fill: var(--ink-2); }
 .study-fig .note { fill: var(--ink-3); }
 .km { fill: none; stroke-width: 2; stroke-linejoin: round; }
+.study-fig.rows { height: 300px; }
+.notes figure + p, .notes .table-wrap + p { margin-top: 1.1rem; }
+.study-fig .grid { stroke: var(--rule); stroke-width: 1; }
+.study-fig .whisker { stroke: var(--ink-2); stroke-width: 1.5; }
+.study-fig .mark { fill: var(--ink); stroke: var(--ink); stroke-width: 1.5; }
+.study-fig .mark.hollow { fill: var(--bg); }
 
 .foot { padding-block: 2rem 3.5rem; font-size: 0.8125rem; color: var(--ink-3); }
 
@@ -606,6 +614,11 @@ td.num, th.num { text-align: right; }
   .after { padding-block: 2.5rem; }
   .after-grid, .notes > section { grid-template-columns: minmax(0, 1fr); gap: 1rem; }
   .notes > section { padding-block: 2.5rem; }
+  #studyTable thead { display: none; }
+  #studyTable tr { display: grid; grid-template-columns: 1fr 1fr; padding-block: 0.6rem; border-bottom: 1px solid var(--rule); }
+  #studyTable td { border: 0; padding: 0; text-align: left; font-size: 0.8125rem; white-space: normal; }
+  #studyTable td:first-child { grid-column: 1 / -1; margin-bottom: 0.3rem; font-size: 0.875rem; }
+  #studyTable td[data-lr]::before { content: attr(data-lr) "\A"; white-space: pre; color: var(--ink-3); }
   .worked { margin-top: 1.25rem; }
   .solid { width: 100%; text-align: center; }
   .bench-actions .solid { width: 100%; }

@@ -887,10 +887,7 @@
    "n": 16,
    "events": 12,
    "medianStep": 7500,
-   "ci": [
-    7250.0,
-    7950.0
-   ],
+   "ci": null,
    "curve": [
     [
      0,
@@ -1072,11 +1069,8 @@
    "curriculum": "uniform clone",
    "n": 16,
    "events": 0,
-   "medianStep": Infinity,
-   "ci": [
-    NaN,
-    NaN
-   ],
+   "medianStep": null,
+   "ci": null,
    "curve": [
     [
      0,
@@ -4282,11 +4276,8 @@
    "curriculum": "uniform tiled",
    "n": 32,
    "events": 0,
-   "medianStep": Infinity,
-   "ci": [
-    NaN,
-    NaN
-   ],
+   "medianStep": null,
+   "ci": null,
    "curve": [
     [
      0,

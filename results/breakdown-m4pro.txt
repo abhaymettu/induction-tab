@@ -1,0 +1,24 @@
+apple metal-3, chrome 156.0.8078.74, 435456 params, 65 dispatches
+step 10.04 ms; empty-dispatch overhead 1.6 us each, 0.10 ms per step
+  data           1    0.040 ms
+  fwd           23    1.880 ms
+  loss           2    0.200 ms
+  bwd           37    8.520 ms
+  tick           1    0.020 ms
+  opt            1    0.080 ms
+  GEMM          39    8.440 ms
+  EMBED_BWD      1    0.460 ms
+  TOKEN_INDEX    1    0.260 ms
+  LN_FWD         5    0.200 ms
+  LN_BWD_X       5    0.180 ms
+  GELU_BWD       2    0.180 ms
+  LOSS_REDUCE    1    0.180 ms
+  GELU_FWD       2    0.160 ms
+  SOFTMAX_BWD    2    0.140 ms
+  SOFTMAX_FWD    2    0.120 ms
+  ADAMW          1    0.080 ms
+  XENT           1    0.060 ms
+  EMBED_FWD      1    0.040 ms
+  DATA           1    0.040 ms
+  TICK           1    0.020 ms
+  top GEMM: bwd 0.54, bwd 0.54, bwd 0.52, bwd 0.52, bwd 0.48, bwd 0.48, bwd 0.48, bwd 0.46
