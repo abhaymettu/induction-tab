@@ -1,6 +1,6 @@
 """Survival analysis of the seeds study, per research/PREREG.md. Writes results/study-summary.json and results/study-table.md.
 
-    python tools/analyze_study.py results/study-lr3e-3.jsonl results/study-lr1e-3.jsonl
+    python tools/analyze_study.py results/study-lr3e-3.jsonl results/study-lr1e-3.jsonl results/study-deep.jsonl results/study-curriculum.jsonl
 """
 import json
 import sys
@@ -14,8 +14,15 @@ BOOT = 2000
 ENV = (0.735, 0.901)
 
 
+TILED = "uniform tiled"
+
+
+def curriculum(c):
+    return ("uniform" if c["uniform"] else "bigram") + (" tiled" if c["tile"] else " clone")
+
+
 def key(c):
-    return (c["L"], c["unique"], c["lr"])
+    return (c["L"], c["unique"], c["lr"], curriculum(c))
 
 
 def flops(c):
@@ -106,7 +113,7 @@ def main(paths):
         frac = np.array([a / b for a, b in pairs]) if pairs else np.array([])
         xs, ys = km(t, e)
         summary[k] = {
-            "L": k[0], "u": k[1], "lr": k[2], "n": len(rows), "events": int(e.sum()), "medianStep": km_median(t, e),
+            "L": k[0], "u": k[1], "lr": k[2], "curriculum": k[3], "n": len(rows), "events": int(e.sum()), "medianStep": km_median(t, e),
             "ci": [float(np.percentile(boot, 2.5)), float(np.percentile(boot, 97.5))], "curve": list(zip(xs, ys)), "flopsPerStep": flops(c),
             "anchorNoFire": int(sum(r["t_event"] is not None and r["t_pv"] is None for r in rows)),
             "gap": None if not len(frac) else {
@@ -118,37 +125,45 @@ def main(paths):
             "_t": t, "_e": e, "_cost": flops(c),
         }
 
-    contrasts = [("tying", (2, 1), (2, 2)), ("tying", (3, 1), (3, 3)), ("tying", (4, 1), (4, 4)), ("tying", (4, 2), (4, 4)), ("depth at equal unique", (4, 2), (2, 2)), ("depth at equal unique", (3, 1), (2, 1)), ("depth at equal unique", (4, 1), (2, 1)), ("untied depth", (3, 3), (2, 2)), ("untied depth", (4, 4), (2, 2))]
+    contrasts = [("tying", (2, 1), (2, 2)), ("tying", (3, 1), (3, 3)), ("tying", (4, 1), (4, 4)), ("tying", (4, 2), (4, 4)), ("depth at equal unique", (4, 2), (2, 2)), ("depth at equal unique", (3, 1), (2, 1)), ("depth at equal unique", (4, 1), (2, 1)), ("untied depth", (3, 3), (2, 2)), ("untied depth", (4, 4), (2, 2)), ("tying", (8, 1), (8, 8)), ("tying", (8, 2), (8, 8)), ("depth at equal unique", (8, 2), (4, 2)), ("untied depth", (8, 8), (4, 4))]
+    pairs = [(kind, (*a, lr, TILED), (*b, lr, TILED)) for kind, a, b in contrasts for lr in sorted({k[2] for k in summary})]
+    pairs += [("curriculum", (2, 2, 0.003, c), (2, 2, 0.003, TILED)) for c in ("bigram tiled", "bigram clone", "uniform clone")]
     out = []
-    for kind, a, b in contrasts:
-        for lr in sorted({k[2] for k in summary}):
-            ka, kb = (*a, lr), (*b, lr)
-            if ka not in summary or kb not in summary:
+    for kind, ka, kb in pairs:
+        if ka not in summary or kb not in summary:
+            continue
+        A, B = summary[ka], summary[kb]
+        a, b, lr = ka[:2] if kind != "curriculum" else ka[3], kb[:2] if kind != "curriculum" else kb[3], ka[2]
+        if not A["events"]:
+            # An arm with no events has no location to fit, so only the bound is reported.
+            out.append({"kind": kind, "a": a, "b": b, "lr": lr, "timeRatio": None, "atLeast": float(A["_t"].min() / B["medianStep"]), "ci": None, "flopRatio": None, "flopCi": None})
+            continue
+        mua, _ = lognormal_fit(A["_t"], A["_e"])
+        mub, _ = lognormal_fit(B["_t"], B["_e"])
+        ratios = []
+        for _ in range(BOOT // 4):
+            ia, ib = rng.integers(0, len(A["_t"]), len(A["_t"])), rng.integers(0, len(B["_t"]), len(B["_t"]))
+            if A["_e"][ia].sum() < 2 or B["_e"][ib].sum() < 2:
                 continue
-            A, B = summary[ka], summary[kb]
-            mua, _ = lognormal_fit(A["_t"], A["_e"])
-            mub, _ = lognormal_fit(B["_t"], B["_e"])
-            ratios = []
-            for _ in range(BOOT // 4):
-                ia, ib = rng.integers(0, len(A["_t"]), len(A["_t"])), rng.integers(0, len(B["_t"]), len(B["_t"]))
-                if A["_e"][ia].sum() < 2 or B["_e"][ib].sum() < 2:
-                    continue
-                ratios.append(lognormal_fit(A["_t"][ia], A["_e"][ia])[0] - lognormal_fit(B["_t"][ib], B["_e"][ib])[0])
-            tr = float(np.exp(mua - mub))
-            lo, hi = np.exp(np.percentile(ratios, [2.5, 97.5])) if ratios else (float("nan"), float("nan"))
-            fr = A["_cost"] / B["_cost"]
-            out.append({"kind": kind, "a": a, "b": b, "lr": lr, "timeRatio": tr, "ci": [float(lo), float(hi)], "flopRatio": tr * fr, "flopCi": [float(lo * fr), float(hi * fr)]})
+            ratios.append(lognormal_fit(A["_t"][ia], A["_e"][ia])[0] - lognormal_fit(B["_t"][ib], B["_e"][ib])[0])
+        tr = float(np.exp(mua - mub))
+        lo, hi = np.exp(np.percentile(ratios, [2.5, 97.5])) if ratios else (float("nan"), float("nan"))
+        fr = A["_cost"] / B["_cost"]
+        out.append({"kind": kind, "a": a, "b": b, "lr": lr, "timeRatio": tr, "ci": [float(lo), float(hi)], "flopRatio": tr * fr, "flopCi": [float(lo * fr), float(hi * fr)]})
 
-    public = [{**{k: v for k, v in s.items() if not k.startswith("_")}, "label": f"{s['L']} layers, {s['u']} unique, lr {s['lr']:g}"} for s in summary.values()]
+    public = [{**{k: v for k, v in s.items() if not k.startswith("_")}, "label": f"{s['L']} layers, {s['u']} unique, lr {s['lr']:g}" + ("" if s["curriculum"] == TILED else f", {s['curriculum']}")} for s in summary.values()]
     Path("results").mkdir(exist_ok=True)
     Path("results/study-summary.json").write_text(json.dumps({"arms": public, "contrasts": out}, indent=1))
 
-    lines = ["| layers | unique | lr | n | events | median step (95% CI) | gap median (IQR) | in envelope | rho | anchor never fired |", "|---|---|---|---|---|---|---|---|---|---|"]
+    lines = ["| layers | unique | lr | curriculum | n | events | median step (95% CI) | gap median (IQR) | in envelope | rho | anchor never fired |", "|---|---|---|---|---|---|---|---|---|---|---|"]
     for s in public:
         g = s["gap"]
-        lines.append(f"| {s['L']} | {s['u']} | {s['lr']:g} | {s['n']} | {s['events']} | {s['medianStep']} ({s['ci'][0]:.0f} to {s['ci'][1]:.0f}) | " + (f"{g['median']:.3f} ({g['iqr'][0]:.3f} to {g['iqr'][1]:.3f}) | {g['inEnvelope']:.2f} | {g['rho']:.2f} | " if g else "n/a | n/a | n/a | ") + f"{s['anchorNoFire']} |")
+        lines.append(f"| {s['L']} | {s['u']} | {s['lr']:g} | {s['curriculum']} | {s['n']} | {s['events']} | {s['medianStep']} ({s['ci'][0]:.0f} to {s['ci'][1]:.0f}) | " + (f"{g['median']:.3f} ({g['iqr'][0]:.3f} to {g['iqr'][1]:.3f}) | {g['inEnvelope']:.2f} | {g['rho']:.2f} | " if g else "n/a | n/a | n/a | ") + f"{s['anchorNoFire']} |")
     lines += ["", "| contrast | lr | time ratio, steps (95% CI) | time ratio, flops (95% CI) |", "|---|---|---|---|"]
     for r in out:
+        if r["timeRatio"] is None:
+            lines.append(f"| {r['kind']}: {r['a']} vs {r['b']} | {r['lr']:g} | above {r['atLeast']:.2f}, no events in budget | n/a |")
+            continue
         lines.append(f"| {r['kind']}: {r['a']} vs {r['b']} | {r['lr']:g} | {r['timeRatio']:.3f} ({r['ci'][0]:.3f} to {r['ci'][1]:.3f}) | {r['flopRatio']:.3f} ({r['flopCi'][0]:.3f} to {r['flopCi'][1]:.3f}) |")
     Path("results/study-table.md").write_text("\n".join(lines) + "\n")
     print("\n".join(lines))
